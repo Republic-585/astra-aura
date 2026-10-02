@@ -7,7 +7,7 @@ const PRODUCTS={
  club:{key:"aura_club_monthly_v1",stars:99,title:"ASTRA AURA Club"}
 };
 const MONTH=2592000;
-const PWA_URL="https://republic-585.github.io/astra-aura/?v=6";
+const PWA_URL="https://republic-585.github.io/astra-aura/?v=7";
 const menu={keyboard:[
  [{text:"👤 Мой кабинет",web_app:{url:PWA_URL}}],
  [{text:"🔮 РАЗБОР"}],
@@ -159,7 +159,7 @@ async function breakdownText(p:any){
  lines.push("","💎 СОВМЕСТИМОСТЬ","Полный разбор совместимости раскроет отношения, коммуникацию, быт, цели и финансы.");
  return lines.join("\n");
 }
-function profile(s:string){
+async function profile(s:string){
  const d=parseDate(s);
  if(!d)return null;
  const yearSum=digits(String(d.year));
