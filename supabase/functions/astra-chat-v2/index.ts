@@ -437,7 +437,7 @@ Deno.serve(async (req) => {
       if (c.data === "buy_profile" && c.message?.chat?.id) {
         const chatId = c.message.chat.id;
         const sourceText = String(c.message.text ?? "");
-        const dateMatch = sourceText.match(/\\b(\\d{2}\\.\\d{2}\\.\\d{4})\\b/);
+        const dateMatch = sourceText.match(/\b(\d{2}\.\d{2}\.\d{4})\b/);
         if (!dateMatch) {
           await tg("sendMessage", {
             chat_id: chatId,
