@@ -1,51 +1,17 @@
 const CHAT_URL="https://dfvztoazthliaobqnndv.supabase.co/functions/v1/astra-chat-v2";
-const STORAGE_KEY="astra-aura-profile-v2";
-const DEVICE_KEY="astra-aura-device-id";
+const STORAGE_KEY="astra-aura-profile-v3",DEVICE_KEY="astra-aura-device-id";
 const $=s=>document.querySelector(s),messages=$("#messages");
-const getProfile=()=>JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}");
+const getProfile=()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}")}catch{return{}}};
 const getDeviceId=()=>{let id=localStorage.getItem(DEVICE_KEY);if(!id){id=crypto.randomUUID();localStorage.setItem(DEVICE_KEY,id)}return id};
 function scrollToId(id){document.getElementById(id)?.scrollIntoView({behavior:"smooth",block:"start"})}
 function addMessage(text,type="assistant"){const row=document.createElement("div");row.className="message "+type;row.innerHTML='<div class="message-avatar">'+(type==="user"?"◉":"✦")+'</div><div class="bubble"></div>';row.querySelector(".bubble").textContent=text;messages.appendChild(row);messages.scrollTop=messages.scrollHeight}
-async function callAI(value){
-  const profile=getProfile();
-  const mode=$("#modeSelect").value||profile.mode||"reflection";
-  const res=await fetch(CHAT_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({channel:"web",external_id:getDeviceId(),display_name:profile.name||"",message:value,mode,profile})});
-  const data=await res.json().catch(()=>({}));
-  if(!res.ok)throw new Error(data.error||"Ошибка AI");
-  if(data.mode)$("#modeSelect").value=data.mode;
-  return data;
-}
-$("#startButton").addEventListener("click",()=>{scrollToId("chatPanel");setTimeout(()=>$("#messageInput").focus(),300)});
-$("#profileButton").addEventListener("click",()=>scrollToId("birthPanel"));
-document.querySelectorAll(".feature-card").forEach(card=>card.addEventListener("click",()=>{
-  const mode=card.dataset.mode;
-  $("#modeSelect").value=mode;
-  if(mode==="natal")scrollToId("birthPanel");else{scrollToId("chatPanel");setTimeout(()=>$("#messageInput").focus(),300)}
-}));
+function setMode(mode){const titles={numerology:"Нумерологический профиль",compatibility:"Совместимость",forecast:"Прогноз на год"};$("#chatTitle").textContent=titles[mode]||"С чего начнём?";$("#messageInput").placeholder=mode==="compatibility"?"Первая дата ДД.ММ.ГГГГ":"ДД.ММ.ГГГГ"}
+async function callAPI(value){const profile=getProfile();const res=await fetch(CHAT_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({channel:"web",external_id:getDeviceId(),message:value,mode:profile.mode||"numerology",profile})});const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||"Ошибка сервера");return data}
+function ask(mode){setMode(mode);const p=getProfile();if(mode==="numerology"&&p.date)$("#messageInput").value=p.date.split("-").reverse().join(".");scrollToId("chatPanel");setTimeout(()=>$("#messageInput").focus(),250)}
+$("#startButton").addEventListener("click",()=>ask("numerology"));$("#profileButton").addEventListener("click",()=>scrollToId("birthPanel"));
+document.querySelectorAll(".feature-card").forEach(card=>card.addEventListener("click",()=>ask(card.dataset.mode)));
 document.querySelectorAll(".nav-item").forEach(item=>item.addEventListener("click",()=>{document.querySelectorAll(".nav-item").forEach(x=>x.classList.remove("active"));item.classList.add("active");if(item.dataset.scroll!=="top")scrollToId(item.dataset.scroll);else window.scrollTo({top:0,behavior:"smooth"})}));
-$("#chatForm").addEventListener("submit",async e=>{
-  e.preventDefault();
-  const input=$("#messageInput"),value=input.value.trim();
-  if(!value)return;
-  addMessage(value,"user");input.value="";
-  const button=$("#chatForm button");button.disabled=true;
-  addMessage("Секунду…");const pending=messages.lastElementChild;
-  try{const data=await callAI(value);pending.remove();addMessage(data.answer||"Нет ответа.");}
-  catch(err){pending.remove();addMessage("Сейчас не удалось получить ответ. Попробуй ещё раз.");}
-  finally{button.disabled=false}
-});
-const saved=getProfile();
-if(saved){
-  $("#birthDate").value=saved.date||"";
-  $("#birthTime").value=saved.time||"";
-  $("#birthPlace").value=saved.place||"";
-  $("#modeSelect").value=saved.mode||"reflection";
-}
-$("#birthForm").addEventListener("submit",e=>{
-  e.preventDefault();
-  const profile={...getProfile(),date:$("#birthDate").value,time:$("#birthTime").value,place:$("#birthPlace").value.trim(),mode:$("#modeSelect").value};
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(profile));
-  addMessage("Профиль сохранён. Эти данные будут использоваться в следующих консультациях.");
-  scrollToId("chatPanel");
-});
-if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+$("#chatForm").addEventListener("submit",async e=>{e.preventDefault();const input=$("#messageInput"),value=input.value.trim();if(!value)return;addMessage(value,"user");input.value="";const button=$("#chatForm button");button.disabled=true;addMessage("Секунду…");const pending=messages.lastElementChild;try{const data=await callAPI(value);pending.remove();addMessage(data.answer||"Готово.")}catch(err){pending.remove();addMessage("Не удалось получить результат. Проверь дату и попробуй ещё раз.")}finally{button.disabled=false;input.focus()}});
+const saved=getProfile();if(saved.date)$("#birthDate").value=saved.date;
+$("#birthForm").addEventListener("submit",e=>{e.preventDefault();const date=$("#birthDate").value;if(!date)return;const profile={...getProfile(),date,mode:"numerology"};localStorage.setItem(STORAGE_KEY,JSON.stringify(profile));ask("numerology");$("#messageInput").value=date.split("-").reverse().join(".");$("#chatForm").requestSubmit()});
+setMode("numerology");if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js?v=3").catch(()=>{}));
