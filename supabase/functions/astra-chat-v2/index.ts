@@ -11,7 +11,6 @@ const PWA_URL="https://republic-585.github.io/astra-aura/?v=7";
 const menu={keyboard:[
  [{text:"👤 Мой кабинет",web_app:{url:PWA_URL}}],
  [{text:"🔮 РАЗБОР"}],
- [{text:"💎 ASTRA AURA Club"}],
  [{text:"🧾 Мои покупки"}],
 ],resize_keyboard:true,is_persistent:true};
 
