@@ -131,6 +131,7 @@ Deno.serve(async(req)=>{
   if(req.method!=="POST")return new Response("ASTRA AURA v40",{status:200,headers:cors});
   if(!BOT_TOKEN||!SUPABASE_URL||!SUPABASE_SERVICE_ROLE_KEY)return new Response(JSON.stringify({error:"configuration error"}),{status:500,headers:{...cors,"Content-Type":"application/json"}});
   const u=await req.json();
+  if(u?.channel==="web"){const out=await handleWeb(u);return new Response(JSON.stringify(out),{status:200,headers:{...cors,"Content-Type":"application/json"}});}
   if(u.callback_query){
    const c=u.callback_query;await tg("answerCallbackQuery",{callback_query_id:c.id});const data=String(c.data??"");
    if(data.startsWith("buy:")&&c.message?.chat?.id){
