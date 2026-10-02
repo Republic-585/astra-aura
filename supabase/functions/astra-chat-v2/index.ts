@@ -27,15 +27,114 @@ function clean(x:any){return String(x??"").replace(/—/g,"-").replace(/–/g,"-
 function labelNumber(n:number){return [11,22,33].includes(n)?"мастер-число "+n:"число "+n;}
 function mainKeyboard(){return{reply_markup:menu};}
 async function sendLong(chatId:number,text:string,extra:any={}){let r=text;while(r.length>3800){let i=r.lastIndexOf("\n",3800);if(i<1000)i=3800;await tg("sendMessage",{chat_id:chatId,text:r.slice(0,i),...extra});r=r.slice(i).trim();}if(r)await tg("sendMessage",{chat_id:chatId,text:r,...extra});}
+
+async function isOwner(uid:number){
+  try{
+    const r=await db("numerology_admins?telegram_user_id=eq."+uid+"&select=role");
+    return Boolean(r?.[0] && (r[0].role==="owner" || r[0].role==="admin"));
+  }catch(e){console.error(e);return false;}
+}
+async function ownerDeliver(chatId:number,key:string,payload:string){
+  if(key===PRODUCTS.profile.key){
+    const x=await profile(payload);
+    if(x) await sendLong(chatId,premiumText(x),mainKeyboard());
+    return;
+  }
+  if(key===PRODUCTS.forecast.key){
+    const x=await profile(payload);
+    if(!x)return;
+    const out=["🔮 ПОЛНЫЙ ПРОГНОЗ ASTRA AURA","",x.nums.currentYear+" · персональный год "+x.nums.personalYear,"",clean(x.personalYear.meaning),"","🗓 12 МЕСЯЦЕВ"];
+    for(let mo=1;mo<=12;mo++){
+      const n=baseNumber(reduceNumber(x.nums.personalYear+mo));
+      const r=await row("personal_month",String(n));
+      out.push("\n"+mo+". "+clean(r.title)+" · число "+n,clean(r.meaning),clean(r.practical_advice));
+    }
+    out.push("","🌙 Итог","Это карта тем для саморефлексии и планирования, а не обещание конкретных событий.");
+    await sendLong(chatId,out.join("\n"),mainKeyboard());
+    return;
+  }
+  if(key===PRODUCTS.compatibility.key){
+    const parts=payload.split("|");
+    if(parts.length!==2)return;
+    const a=await profile(parts[0]),b=await profile(parts[1]);
+    if(!a||!b)return;
+    const c=await compatibility(a.nums.life,b.nums.life);
+    await sendLong(chatId,[
+      "❤️ ПОЛНЫЙ РАЗБОР СОВМЕСТИМОСТИ","",
+      dateLabel(a.d)+" · "+labelNumber(a.nums.life),
+      dateLabel(b.d)+" · "+labelNumber(b.nums.life),"",
+      "✨ "+clean(c.meaning),"",
+      "💪 Сильная сторона\n"+clean(c.strengths),"",
+      "⚠️ Зона внимания\n"+clean(c.challenges),"",
+      "🗣 Как договариваться\n"+clean(c.guidance),"",
+      "🌙 Итог\nЦифры не решают за вас, подходит ли человек. Они помогают точнее увидеть темы для разговора и договорённостей."
+    ].join("\n"),mainKeyboard());
+    return;
+  }
+  if(key===PRODUCTS.bundle.key){
+    const x=await profile(payload);
+    if(!x)return;
+    const out=["👑 ASTRA AURA MAX","","Режим владельца — полный доступ открыт бесплатно ✨","",premiumText(x),"","🔮 ПРОГНОЗ НА ГОД","",x.nums.currentYear+" · персональный год "+x.nums.personalYear,"",clean(x.personalYear.meaning),"","🗓 12 МЕСЯЦЕВ"];
+    for(let mo=1;mo<=12;mo++){
+      const n=reduceNumber(x.nums.personalYear+mo);
+      const r=await row("personal_month",String(n));
+      out.push("\n"+mo+". "+clean(r.title)+" · число "+n,clean(r.meaning),clean(r.practical_advice));
+    }
+    await sendLong(chatId,out.join("\n"),mainKeyboard());
+    return;
+  }
+  if(key===PRODUCTS.club.key){
+    await tg("sendMessage",{chat_id:chatId,text:"💎 ASTRA AURA Club\n\nРежим владельца: доступ открыт бесплатно. ✨",...mainKeyboard()});
+  }
+}
+
 async function event(uid:number,key:string,product:string|null=null,metadata:any={}){try{await db("numerology_events",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({telegram_user_id:uid,event_key:key,product_key:product,metadata})});}catch(e){console.error(e);}}
 async function setSession(uid:number,mode:string,step:number,data:any={}){await db("numerology_sessions?on_conflict=telegram_user_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({telegram_user_id:uid,mode,step,data,updated_at:new Date().toISOString()})});}
 async function getSession(uid:number){const r=await db("numerology_sessions?telegram_user_id=eq."+uid+"&select=*");return r?.[0]??null;}
 async function clearSession(uid:number){await db("numerology_sessions?telegram_user_id=eq."+uid,{method:"DELETE"});}
 async function row(category:string,key:string){const r=await db("numerology_knowledge?category=eq."+encodeURIComponent(category)+"&key=eq."+encodeURIComponent(key)+"&select=*");return r?.[0]??{};}
-async function profile(s:string){const d=parseDate(s);if(!d)return null;const yearSum=digits(String(d.year)),life=reduceNumber(reduceNumber(d.month)+reduceNumber(d.day)+yearSum),attitude=reduceNumber(d.month+d.day),personalYear=reduceNumber(d.month+d.day+digits(String(new Date().getUTCFullYear()))),full=digits(String(d.day).padStart(2,"0")+String(d.month).padStart(2,"0")+String(d.year));const karmic=[13,14,16,19].includes(full)?full:([13,14,16,19].includes(d.day)?d.day:null);return{d,nums:{life,attitude,personalYear,karmic},life:await row([11,22,33].includes(life)?"master":"core",String(life)),birthday:await row("birthday",String(d.day)),attitude:await row([11,22,33].includes(attitude)?"master":"core",String(attitude)),personalYear:await row("core",String(personalYear))};}
-async function compatibility(a:number,b:number){const x=Math.min(baseNumber(a),baseNumber(b)),y=Math.max(baseNumber(a),baseNumber(b));const r=await db("numerology_compatibility?pair_key=eq."+x+"-"+y+"&select=*");return r?.[0]??{};}
+async function rule(ruleKey:string){
+ const r=await db("numerology_rules?rule_key=eq."+encodeURIComponent(ruleKey)+"&select=*");
+ return r?.[0]??{};
+}
+async function profile(s:string){
+ const d=parseDate(s);
+ if(!d)return null;
+ const yearSum=digits(String(d.year));
+ const life=reduceNumber(reduceNumber(d.month)+reduceNumber(d.day)+yearSum);
+ const attitude=reduceNumber(d.month+d.day);
+ const currentYear=new Date().getUTCFullYear();
+ const personalYear=baseNumber(reduceNumber(d.month+d.day+digits(String(currentYear))));
+ const personalMonth=baseNumber(reduceNumber(personalYear+new Date().getUTCMonth()+1));
+ const full=digits(String(d.day).padStart(2,"0")+String(d.month).padStart(2,"0")+String(d.year));
+ const karmic=[13,14,16,19].includes(full)?full:([13,14,16,19].includes(d.day)?d.day:null);
+ const lifeCategory=[11,22,33].includes(life)?"master":"core";
+ const attitudeCategory=[11,22,33].includes(attitude)?"master":"core";
+ const [lifeRow,birthdayRow,attitudeRow,yearRow,monthRow,lifeRule,birthdayRule,attitudeRule,yearRule,monthRule]=await Promise.all([
+   row(lifeCategory,String(life)),
+   row("birthday",String(d.day)),
+   row(attitudeCategory,String(attitude)),
+   row("personal_year",String(personalYear)),
+   row("personal_month",String(personalMonth)),
+   rule("life_path"),
+   rule("birthday"),
+   rule("attitude"),
+   rule("personal_year"),
+   rule("personal_month")
+ ]);
+ return {
+   d,
+   nums:{life,attitude,personalYear,personalMonth,karmic,currentYear},
+   life:lifeRow,
+   birthday:birthdayRow,
+   attitude:attitudeRow,
+   personalYear:yearRow,
+   personalMonth:monthRow,
+   rules:{life:lifeRule,birthday:birthdayRule,attitude:attitudeRule,personalYear:yearRule,personalMonth:monthRule}
+ };
+}
 function freeText(p:any){return["🔢 ТВОЙ НУМЕРОЛОГИЧЕСКИЙ ПРОФИЛЬ","","📅 "+dateLabel(p.d),"","✨ Жизненный путь: "+labelNumber(p.nums.life),clean(p.life.meaning),"","🎂 День рождения: "+p.d.day,clean(p.birthday.meaning),"","🧭 Число установки: "+p.nums.attitude,clean(p.attitude.meaning),"","📅 Персональный год "+new Date().getUTCFullYear()+": "+p.nums.personalYear,clean(p.personalYear.meaning),"","💎 Полный профиль: отношения, деньги, реализация, сильные стороны и практические рекомендации.","","👑 ASTRA AURA MAX: профиль, совместимость и прогноз на год за 599⭐"].join("\n");}
-function premiumText(p:any){return["💎 ПОЛНЫЙ ПРОФИЛЬ ASTRA AURA","", "📅 "+dateLabel(p.d),"","✨ ЖИЗНЕННЫЙ ПУТЬ: "+labelNumber(p.nums.life),clean(p.life.meaning),clean(p.life.essence),"💪 Сильные стороны\n"+clean(p.life.strengths),"⚠️ Что может мешать\n"+clean(p.life.challenges),"🎯 Реализация\n"+clean(p.life.realization),"💰 Деньги\n"+clean(p.life.money),"❤️ Отношения\n"+clean(p.life.relationships),"🧭 Смысл\n"+clean(p.life.purpose),"💡 Совет\n"+clean(p.life.practical_advice),"","🎂 ДЕНЬ РОЖДЕНИЯ: "+p.d.day,clean(p.birthday.meaning),"💪 "+clean(p.birthday.strengths),"⚠️ "+clean(p.birthday.challenges),"❤️ "+clean(p.birthday.relationships),"","🧭 ЧИСЛО УСТАНОВКИ: "+p.nums.attitude,clean(p.attitude.meaning),clean(p.attitude.essence),"","📅 ПЕРСОНАЛЬНЫЙ ГОД: "+p.nums.personalYear,clean(p.personalYear.meaning),clean(p.personalYear.essence),clean(p.personalYear.practical_advice),p.nums.karmic?"♾ Кармическая тема: "+p.nums.karmic:"","🌙 ИТОГ","Твой профиль складывается из нескольких чисел. Посмотри, какие темы откликаются именно тебе.","","ASTRA AURA ✨"].filter(Boolean).join("\n");}
+function premiumText(p:any){return["💎 ПОЛНЫЙ ПРОФИЛЬ ASTRA AURA","", "📅 "+dateLabel(p.d),"","✨ ЖИЗНЕННЫЙ ПУТЬ: "+labelNumber(p.nums.life),clean(p.life.meaning),clean(p.life.essence),"💪 Сильные стороны\n"+clean(p.life.strengths),"⚠️ Что может мешать\n"+clean(p.life.challenges),"🎯 Реализация\n"+clean(p.life.realization),"💰 Деньги\n"+clean(p.life.money),"❤️ Отношения\n"+clean(p.life.relationships),"🧭 Смысл\n"+clean(p.life.purpose),"💡 Совет\n"+clean(p.life.practical_advice),"","🎂 ДЕНЬ РОЖДЕНИЯ: "+p.d.day,clean(p.birthday.meaning),"💪 "+clean(p.birthday.strengths),"⚠️ "+clean(p.birthday.challenges),"❤️ "+clean(p.birthday.relationships),"","🧭 ЧИСЛО УСТАНОВКИ: "+p.nums.attitude,clean(p.attitude.meaning),clean(p.attitude.essence),"","📅 ПЕРСОНАЛЬНЫЙ ГОД: "+p.nums.personalYear,clean(p.personalYear.meaning),clean(p.personalYear.essence),clean(p.personalYear.practical_advice),p.personalMonth?.meaning?"🗓 Текущий месяц · число "+p.nums.personalMonth+"\n"+clean(p.personalMonth.meaning)+"\n"+clean(p.personalMonth.practical_advice):"",p.nums.karmic?"♾ Кармическая тема: "+p.nums.karmic:"","🌙 ИТОГ","Твой профиль складывается из нескольких чисел. Посмотри, какие темы откликаются именно тебе.","","ASTRA AURA ✨"].filter(Boolean).join("\n");}
 function buyKeyboard(p:any,payload:string){return{inline_keyboard:[[{text:"💎 "+p.title+" · "+p.stars+"⭐",callback_data:"buy:"+p.key+":"+payload}]]};}
 async function invoice(chatId:number,p:any,payload:string,description:string){
  const body:any={title:p.title,description,payload,currency:"XTR",prices:[{label:p.title,amount:p.stars}]};
@@ -53,7 +152,7 @@ async function paid(chatId:number,user:any,payload:string,payment:any){
  await event(user.id,"payment_success",p.key,{amount:payment.total_amount,recurring:Boolean(payment.is_recurring)});
  if(p.key===PRODUCTS.profile.key){const m=payload.match(/^full_numerology_profile_v1:(\d{2}\.\d{2}\.\d{4})$/),x=m?await profile(m[1]):null;if(x)await sendLong(chatId,premiumText(x),mainKeyboard());}
  else if(p.key===PRODUCTS.compatibility.key){const m=payload.match(/^compatibility_v1:(\d{2}\.\d{2}\.\d{4})\|(\d{2}\.\d{2}\.\d{4})$/),a=m?await profile(m[1]):null,b=m?await profile(m[2]):null;if(a&&b){const c=await compatibility(a.nums.life,b.nums.life);await sendLong(chatId,["❤️ ПОЛНЫЙ РАЗБОР СОВМЕСТИМОСТИ","",dateLabel(a.d)+" · "+labelNumber(a.nums.life),dateLabel(b.d)+" · "+labelNumber(b.nums.life),"","✨ "+clean(c.meaning),"","💪 Сильная сторона\n"+clean(c.strengths),"","⚠️ Зона внимания\n"+clean(c.challenges),"","🗣 Как договариваться\n"+clean(c.guidance),"","🎂 Дополнительный слой\nДни рождения: "+a.d.day+" и "+b.d.day+".","📅 Текущие циклы\nВаши персональные годы: "+a.nums.personalYear+" и "+b.nums.personalYear+".","🌙 Итог\nЦифры не решают за вас, подходит ли человек. Они помогают точнее увидеть темы для разговора и договорённостей.","","Берегите живого человека за цифрами ❤️"].join("\n"),mainKeyboard());}}
- else if(p.key===PRODUCTS.forecast.key){const m=payload.match(/^annual_forecast_v1:(\d{2}\.\d{2}\.\d{4})$/),x=m?await profile(m[1]):null;if(x){const out=["🔮 ПОЛНЫЙ ПРОГНОЗ ASTRA AURA","",new Date().getUTCFullYear()+" · персональный год "+x.nums.personalYear,"",clean(x.personalYear.meaning),"","🗓 12 МЕСЯЦЕВ"];for(let mo=1;mo<=12;mo++){const n=reduceNumber(x.nums.personalYear+mo),r=await row("personal_month",String(n));out.push("\n"+mo+". "+clean(r.title)+" · число "+n,clean(r.meaning),clean(r.practical_advice));}out.push("","🌙 Итог\nЭто карта тем для саморефлексии и планирования, а не обещание конкретных событий.");await sendLong(chatId,out.join("\n"),mainKeyboard());}}
+ else if(p.key===PRODUCTS.forecast.key){const m=payload.match(/^annual_forecast_v1:(\d{2}\.\d{2}\.\d{4})$/),x=m?await profile(m[1]):null;if(x){const out=["🔮 ПОЛНЫЙ ПРОГНОЗ ASTRA AURA","",x.nums.currentYear+" · персональный год "+x.nums.personalYear,"",clean(x.personalYear.meaning),"","🗓 12 МЕСЯЦЕВ"];for(let mo=1;mo<=12;mo++){const n=baseNumber(reduceNumber(x.nums.personalYear+mo)),r=await row("personal_month",String(n));out.push("\n"+mo+". "+clean(r.title)+" · число "+n,clean(r.meaning),clean(r.practical_advice));}out.push("","🌙 Итог\nЭто карта тем для саморефлексии и планирования, а не обещание конкретных событий.");await sendLong(chatId,out.join("\n"),mainKeyboard());}}
  else if(p.key===PRODUCTS.bundle.key){
    const m=payload.match(/^aura_max_bundle_v1:(\d{2}\.\d{2}\.\d{4})$/),x=m?await profile(m[1]):null;
    if(x){
@@ -96,7 +195,7 @@ async function handle(update:any){
  if(text==="🔢 Нумерология"){await clearSession(user.id);await event(user.id,"product_view",PRODUCTS.profile.key);await tg("sendMessage",{chat_id:chatId,text:"🔢 НУМЕРОЛОГИЯ\n\nОтправь дату рождения ДД.ММ.ГГГГ.\nНапример: 04.05.1993\n\nГород и время не нужны.",...mainKeyboard()});return;}
  if(text==="🤝 Совместимость"){await setSession(user.id,"compatibility",1,{});await event(user.id,"product_view",PRODUCTS.compatibility.key);await tg("sendMessage",{chat_id:chatId,text:"🤝 СОВМЕСТИМОСТЬ\n\nСравним две даты рождения ❤️\n\nСначала отправь первую дату ДД.ММ.ГГГГ.",...mainKeyboard()});return;}
  if(text==="🔮 Прогноз на год"){await setSession(user.id,"forecast",1,{});await event(user.id,"product_view",PRODUCTS.forecast.key);await tg("sendMessage",{chat_id:chatId,text:"🔮 ПРОГНОЗ НА ГОД\n\nОтправь дату рождения ДД.ММ.ГГГГ.\nПокажу тему года, затем можно открыть прогноз на 12 месяцев.",...mainKeyboard()});return;}
- if(text==="💎 ASTRA AURA Club"){await event(user.id,"product_view",PRODUCTS.club.key);await invoice(chatId,PRODUCTS.club,PRODUCTS.club.key,"Ежемесячный доступ к расширенным материалам и функциям ASTRA AURA.");return;}
+ if(text==="💎 ASTRA AURA Club"){await event(user.id,"product_view",PRODUCTS.club.key);if(await isOwner(user.id)){await ownerDeliver(chatId,PRODUCTS.club.key,PRODUCTS.club.key);return;}await invoice(chatId,PRODUCTS.club,PRODUCTS.club.key,"Ежемесячный доступ к расширенным материалам и функциям ASTRA AURA.");return;}
  if(text==="📖 Справочник"){await tg("sendMessage",{chat_id:chatId,text:"📖 СПРАВОЧНИК\n\n🔢 Числа 1-9\n🌟 11, 22, 33\n🎂 День рождения 1-31\n🧭 Число установки\n📅 Персональный год\n🗓 Персональный месяц\n♾ Кармические числа\n🤝 Совместимость по жизненному пути",...mainKeyboard()});return;}
  if(text==="🧾 Мои покупки"){const rows=await db("numerology_purchases?telegram_user_id=eq."+user.id+"&select=product_key,amount,created_at,is_recurring&order=created_at.desc&limit=20");const names:any={};Object.values(PRODUCTS).forEach((x:any)=>names[x.key]=x.title);const refs=await db("numerology_referrals?referrer_telegram_user_id=eq."+user.id+"&select=id");const refCount=refs?.length??0;const body=rows?.length?rows.map((r:any)=>"• "+(names[r.product_key]??r.product_key)+" · "+r.amount+"⭐ · "+new Date(r.created_at).toLocaleDateString("ru-RU")+(r.is_recurring?" · подписка":"")).join("\n"):"Пока здесь пусто. Первый продукт можно открыть после бесплатного расчёта 🙂";await tg("sendMessage",{chat_id:chatId,text:"🧾 МОИ ПОКУПКИ\n\n"+body+"\n\n👥 Приглашено: "+refCount+"\n\n🔗 Твоя ссылка: https://t.me/astra_aura_bot?start=ref_"+user.id,...mainKeyboard()});return;}
  if(text==="ℹ️ О боте"){await tg("sendMessage",{chat_id:chatId,text:"ℹ️ О БОТЕ\n\nASTRA AURA - нумерология по дате рождения.\n\nРасчёт, интерпретация и персональные разборы ✨",...mainKeyboard()});return;}
@@ -113,12 +212,12 @@ async function handle(update:any){
    if(!d){await tg("sendMessage",{chat_id:chatId,text:"Нужна дата ДД.ММ.ГГГГ 🙂",...mainKeyboard()});return;}
    if(s.step===1){await setSession(user.id,"compatibility",2,{date1:dateLabel(d)});await tg("sendMessage",{chat_id:chatId,text:"Принял 👍\n\nТеперь отправь вторую дату рождения.",...mainKeyboard()});return;}
    const a=await profile(s.data.date1),b=await profile(dateLabel(d));await clearSession(user.id);
-   if(a&&b){const c=await compatibility(a.nums.life,b.nums.life);await event(user.id,"compatibility_preview",PRODUCTS.compatibility.key);await tg("sendMessage",{chat_id:chatId,text:"🤝 ПРЕДВАРИТЕЛЬНЫЙ РАЗБОР\n\nТы: "+labelNumber(a.nums.life)+"\nПартнёр: "+labelNumber(b.nums.life)+"\n\n✨ "+clean(c.meaning)+"\n\n💎 Полный разбор раскрывает сильные стороны пары, зоны напряжения и практические рекомендации ❤️",...mainKeyboard()});await invoice(chatId,PRODUCTS.compatibility,PRODUCTS.compatibility.key+":"+s.data.date1+"|"+dateLabel(d),"Полный разбор совместимости ASTRA AURA.");return;}
+   if(a&&b){const c=await compatibility(a.nums.life,b.nums.life);await event(user.id,"compatibility_preview",PRODUCTS.compatibility.key);if(await isOwner(user.id)){await ownerDeliver(chatId,PRODUCTS.compatibility.key,s.data.date1+"|"+dateLabel(d));return;}await tg("sendMessage",{chat_id:chatId,text:"🤝 ПРЕДВАРИТЕЛЬНЫЙ РАЗБОР\n\nТы: "+labelNumber(a.nums.life)+"\nПартнёр: "+labelNumber(b.nums.life)+"\n\n✨ "+clean(c.meaning)+"\n\n💎 Полный разбор раскрывает сильные стороны пары, зоны напряжения и практические рекомендации ❤️",...mainKeyboard()});await invoice(chatId,PRODUCTS.compatibility,PRODUCTS.compatibility.key+":"+s.data.date1+"|"+dateLabel(d),"Полный разбор совместимости ASTRA AURA.");return;}
  }
  if(s?.mode==="forecast"){
    if(!d){await tg("sendMessage",{chat_id:chatId,text:"Нужна дата ДД.ММ.ГГГГ 🙂",...mainKeyboard()});return;}
    const p=await profile(dateLabel(d));await clearSession(user.id);
-   if(p){await event(user.id,"forecast_preview",PRODUCTS.forecast.key);await tg("sendMessage",{chat_id:chatId,text:"🔮 ПРЕДВАРИТЕЛЬНЫЙ ПРОГНОЗ\n\n"+new Date().getUTCFullYear()+" · персональный год "+p.nums.personalYear+"\n\n"+clean(p.personalYear.meaning)+"\n\n💎 Полная версия раскрывает все 12 месяцев.",...mainKeyboard()});await invoice(chatId,PRODUCTS.forecast,PRODUCTS.forecast.key+":"+dateLabel(d),"Персональный прогноз ASTRA AURA на 12 месяцев.");return;}
+   if(p){await event(user.id,"forecast_preview",PRODUCTS.forecast.key);if(await isOwner(user.id)){await ownerDeliver(chatId,PRODUCTS.forecast.key,dateLabel(d));return;}await tg("sendMessage",{chat_id:chatId,text:"🔮 ПРЕДВАРИТЕЛЬНЫЙ ПРОГНОЗ\n\n"+p.nums.currentYear+" · персональный год "+p.nums.personalYear+"\n\n"+clean(p.personalYear.meaning)+"\n\n💎 Полная версия раскрывает все 12 месяцев.",...mainKeyboard()});await invoice(chatId,PRODUCTS.forecast,PRODUCTS.forecast.key+":"+dateLabel(d),"Персональный прогноз ASTRA AURA на 12 месяцев.");return;}
  }
  const p=await profile(text);if(p){await event(user.id,"free_profile",PRODUCTS.profile.key);await tg("sendMessage",{chat_id:chatId,text:freeText(p),reply_markup:{inline_keyboard:[[{text:"💎 Полный профиль · 199⭐",callback_data:"buy:"+PRODUCTS.profile.key+":"+dateLabel(p.d)}],[{text:"👑 ASTRA AURA MAX · 599⭐",callback_data:"buy:"+PRODUCTS.bundle.key+":"+dateLabel(p.d)}]]}});return;}
  await tg("sendMessage",{chat_id:chatId,text:"Похоже, дата записана не совсем так 🙂\\n\\nИспользуй формат ДД.ММ.ГГГГ.\\nНапример: 04.05.1993\\n\\nИли выбери направление в меню.",...mainKeyboard()});
@@ -128,7 +227,7 @@ Deno.serve(async(req)=>{
  try{
   const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
   if(req.method==="OPTIONS")return new Response("ok",{status:204,headers:cors});
-  if(req.method!=="POST")return new Response("ASTRA AURA v40",{status:200,headers:cors});
+  if(req.method!=="POST")return new Response("ASTRA AURA v51",{status:200,headers:cors});
   if(!BOT_TOKEN||!SUPABASE_URL||!SUPABASE_SERVICE_ROLE_KEY)return new Response(JSON.stringify({error:"configuration error"}),{status:500,headers:{...cors,"Content-Type":"application/json"}});
   const u=await req.json();
   if(u?.channel==="web"){const out=await handleWeb(u);return new Response(JSON.stringify(out),{status:200,headers:{...cors,"Content-Type":"application/json"}});}
@@ -140,7 +239,7 @@ Deno.serve(async(req)=>{
     if(key===PRODUCTS.profile.key||key===PRODUCTS.forecast.key)ok=/^\d{2}\.\d{2}\.\d{4}$/.test(payload)&&Boolean(parseDate(payload));
     if(key===PRODUCTS.compatibility.key){const m=payload.match(/^(\d{2}\.\d{2}\.\d{4})\|(\d{2}\.\d{2}\.\d{4})$/);ok=Boolean(m&&parseDate(m[1])&&parseDate(m[2]));}
     if(key===PRODUCTS.bundle.key)ok=/^\d{2}\.\d{2}\.\d{4}$/.test(payload)&&Boolean(parseDate(payload));
-    if(ok){await event(c.from.id,"checkout_click",p.key,{payload});await invoice(c.message.chat.id,p,key+":"+payload,"Персональный продукт ASTRA AURA.");}
+    if(ok){if(await isOwner(c.from.id)){await event(c.from.id,"owner_free_access",p.key,{payload});await ownerDeliver(c.message.chat.id,p.key,payload);return new Response("ok");}await event(c.from.id,"checkout_click",p.key,{payload});await invoice(c.message.chat.id,p,key+":"+payload,"Персональный продукт ASTRA AURA.");}
    }
    return new Response("ok");
   }
