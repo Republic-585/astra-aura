@@ -14,7 +14,6 @@ const menu={keyboard:[
  [{text:"🔢 Нумерология"},{text:"🤝 Совместимость"}],
  [{text:"🔮 Прогноз на год"},{text:"💎 ASTRA AURA Club"}],
  [{text:"📖 Справочник"},{text:"🧾 Мои покупки"}],
- [{text:"ℹ️ О боте"},{text:"❓ Помощь"}]
 ],resize_keyboard:true,is_persistent:true};
 
 function tg(method:string,body:Record<string,unknown>){return fetch("https://api.telegram.org/bot"+BOT_TOKEN+"/"+method,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(async r=>{const d=await r.json();if(!d.ok)throw new Error(JSON.stringify(d));return d.result;});}
@@ -231,8 +230,6 @@ async function handle(update:any){
  if(text==="💎 ASTRA AURA Club"){await event(user.id,"product_view",PRODUCTS.club.key);if(await isOwner(user.id)){await ownerDeliver(chatId,PRODUCTS.club.key,PRODUCTS.club.key);return;}await invoice(chatId,PRODUCTS.club,PRODUCTS.club.key,"Ежемесячный доступ к расширенным материалам и функциям ASTRA AURA.");return;}
  if(text==="📖 Справочник"){await tg("sendMessage",{chat_id:chatId,text:"📖 СПРАВОЧНИК\n\n🔢 Числа 1-9\n🌟 11, 22, 33\n🎂 День рождения 1-31\n🧭 Число установки\n📅 Персональный год\n🗓 Персональный месяц\n♾ Кармические числа\n🤝 Совместимость по жизненному пути",...mainKeyboard()});return;}
  if(text==="🧾 Мои покупки"){const rows=await db("numerology_purchases?telegram_user_id=eq."+user.id+"&select=product_key,amount,created_at,is_recurring&order=created_at.desc&limit=20");const names:any={};Object.values(PRODUCTS).forEach((x:any)=>names[x.key]=x.title);const refs=await db("numerology_referrals?referrer_telegram_user_id=eq."+user.id+"&select=id");const refCount=refs?.length??0;const body=rows?.length?rows.map((r:any)=>"• "+(names[r.product_key]??r.product_key)+" · "+r.amount+"⭐ · "+new Date(r.created_at).toLocaleDateString("ru-RU")+(r.is_recurring?" · подписка":"")).join("\n"):"Пока здесь пусто. Первый продукт можно открыть после бесплатного расчёта 🙂";await tg("sendMessage",{chat_id:chatId,text:"🧾 МОИ ПОКУПКИ\n\n"+body+"\n\n👥 Приглашено: "+refCount+"\n\n🔗 Твоя ссылка: https://t.me/astra_aura_bot?start=ref_"+user.id,...mainKeyboard()});return;}
- if(text==="ℹ️ О боте"){await tg("sendMessage",{chat_id:chatId,text:"ℹ️ О БОТЕ\n\nASTRA AURA - нумерология по дате рождения.\n\nРасчёт, интерпретация и персональные разборы ✨",...mainKeyboard()});return;}
- if(text==="❓ Помощь"){await tg("sendMessage",{chat_id:chatId,text:"❓ ПОМОЩЬ\n\n1. Выбери направление.\n2. Отправь дату или две даты.\n3. Получи бесплатный предварительный результат.\n4. Если захочешь глубже, открой полный продукт 💎",...mainKeyboard()});return;}
 
  const s=await getSession(user.id),d=parseDate(text);
  if(s?.mode==="compatibility"){
