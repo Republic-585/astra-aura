@@ -436,14 +436,27 @@ Deno.serve(async (req) => {
       await tg("answerCallbackQuery", { callback_query_id: c.id });
       if (c.data === "buy_profile" && c.message?.chat?.id) {
         const chatId = c.message.chat.id;
-        const last = await tg("sendMessage", {
+        const sourceText = String(c.message.text ?? "");
+        const dateMatch = sourceText.match(/\\b(\\d{2}\\.\\d{2}\\.\\d{4})\\b/);
+        if (!dateMatch) {
+          await tg("sendMessage", {
+            chat_id: chatId,
+            text: "💎 Я не смог найти дату в этом сообщении. Отправь её ещё раз в формате ДД.ММ.ГГГГ 🙂",
+            ...mainKeyboard()
+          });
+          return;
+        }
+
+        const payload = PRODUCT_KEY + ":" + dateMatch[1];
+        await tg("sendInvoice", {
           chat_id: chatId,
-          text: "💎 Полный профиль ASTRA AURA\n\n" +
-            "Чтобы открыть полный разбор, сначала ещё раз отправь дату рождения. " +
-            "После этого я сформирую персональный счёт на " + PRODUCT_STARS + "⭐.",
-          ...mainKeyboard()
+          title: "Полный профиль ASTRA AURA",
+          description: "Расширенный нумерологический разбор по дате рождения: характер, отношения, деньги, реализация и практические рекомендации.",
+          payload,
+          currency: "XTR",
+          prices: [{ label: "Полный профиль ASTRA AURA", amount: PRODUCT_STARS }],
+          start_parameter: "astra-aura-profile"
         });
-        void last;
       }
       return new Response("ok");
     }
