@@ -199,8 +199,62 @@ async function profile(s:string){
    rules:{life:lifeRule,birthday:birthdayRule,attitude:attitudeRule,personalYear:yearRule,personalMonth:monthRule}
  };
 }
-function freeText(p:any){return["🔢 ТВОЙ НУМЕРОЛОГИЧЕСКИЙ ПРОФИЛЬ","","📅 "+dateLabel(p.d),"","🧠 Число Ума: "+p.fourNumbers.mind,clean(p.mind.meaning),"⚙️ Число Действия: "+p.fourNumbers.action,clean(p.action.meaning),"🎯 Число Реализации: "+p.fourNumbers.realization,clean(p.realization.meaning),"🌙 Число Итога: "+p.fourNumbers.outcome,clean(p.outcome.meaning),"","✨ Жизненный путь: "+labelNumber(p.nums.life),clean(p.life.meaning),"","🎂 День рождения: "+p.d.day,clean(p.birthday.meaning),"","🧭 Число установки: "+p.nums.attitude,clean(p.attitude.meaning),"","📅 Персональный год "+new Date().getUTCFullYear()+": "+p.nums.personalYear,clean(p.personalYear.meaning),"","💎 Полный профиль раскрывает таланты, стиль действий, реализацию, отношения, деньги и жизненную задачу."].join("\n");}
-function premiumText(p:any){return["💎 ПОЛНЫЙ ПРОФИЛЬ ASTRA AURA","", "📅 "+dateLabel(p.d),"","✨ ЖИЗНЕННЫЙ ПУТЬ: "+labelNumber(p.nums.life),clean(p.life.meaning),clean(p.life.essence),"💪 Сильные стороны\n"+clean(p.life.strengths),"⚠️ Что может мешать\n"+clean(p.life.challenges),"🎯 Реализация\n"+clean(p.life.realization),"💰 Деньги\n"+clean(p.life.money),"❤️ Отношения\n"+clean(p.life.relationships),"🧭 Смысл\n"+clean(p.life.purpose),"💡 Совет\n"+clean(p.life.practical_advice),"","🎂 ДЕНЬ РОЖДЕНИЯ: "+p.d.day,clean(p.birthday.meaning),"💪 "+clean(p.birthday.strengths),"⚠️ "+clean(p.birthday.challenges),"❤️ "+clean(p.birthday.relationships),"","🧠 ЧИСЛО УМА: "+p.fourNumbers.mind,clean(p.mind.meaning),clean(p.mind.strengths),"⚠️ "+clean(p.mind.challenges),"💡 "+clean(p.mind.practical_advice),"","⚙️ ЧИСЛО ДЕЙСТВИЯ: "+p.fourNumbers.action,clean(p.action.meaning),clean(p.action.strengths),"⚠️ "+clean(p.action.challenges),"💡 "+clean(p.action.practical_advice),"","🎯 ЧИСЛО РЕАЛИЗАЦИИ: "+p.fourNumbers.realization,clean(p.realization.meaning),clean(p.realization.strengths),"⚠️ "+clean(p.realization.challenges),"💰 "+clean(p.realization.money),"🎯 "+clean(p.realization.realization),"💡 "+clean(p.realization.practical_advice),"","🌙 ЧИСЛО ИТОГА: "+p.fourNumbers.outcome,clean(p.outcome.meaning),clean(p.outcome.strengths),"⚠️ "+clean(p.outcome.challenges),"🧭 "+clean(p.outcome.purpose),"💡 "+clean(p.outcome.practical_advice),"","🧭 ЧИСЛО УСТАНОВКИ: "+p.nums.attitude,clean(p.attitude.meaning),clean(p.attitude.essence),"","📅 ПЕРСОНАЛЬНЫЙ ГОД: "+p.nums.personalYear,clean(p.personalYear.meaning),clean(p.personalYear.essence),clean(p.personalYear.practical_advice),p.personalMonth?.meaning?"🗓 Текущий месяц · число "+p.nums.personalMonth+"\n"+clean(p.personalMonth.meaning)+"\n"+clean(p.personalMonth.practical_advice):"",p.nums.karmic?"♾ Кармическая тема: "+p.nums.karmic:"","🌙 ИТОГ","Твой профиль складывается из нескольких чисел. Посмотри, какие темы откликаются именно тебе.","","ASTRA AURA ✨"].filter(Boolean).join("\n");}
+function profileSynthesis(p:any){
+ const n=p.fourNumbers;
+ const mind=clean(p.mind?.meaning), action=clean(p.action?.meaning), realization=clean(p.realization?.meaning), outcome=clean(p.outcome?.meaning);
+ const strengths=[clean(p.life?.strengths),clean(p.mind?.strengths),clean(p.action?.strengths),clean(p.realization?.strengths)].filter(Boolean);
+ const challenges=[clean(p.life?.challenges),clean(p.mind?.challenges),clean(p.action?.challenges),clean(p.realization?.challenges)].filter(Boolean);
+ const money=[clean(p.life?.money),clean(p.realization?.money),clean(p.outcome?.money)].filter(Boolean);
+ const relationships=[clean(p.life?.relationships),clean(p.mind?.relationships),clean(p.outcome?.relationships)].filter(Boolean);
+ const purpose=[clean(p.life?.purpose),clean(p.outcome?.purpose),clean(p.realization?.purpose)].filter(Boolean);
+ return {
+  architecture:"Ум "+n.mind+" → Действие "+n.action+" → Реализация "+n.realization+" → Итог "+n.outcome,
+  talent:clean(p.life?.essence)+" "+clean(p.mind?.essence),
+  strengths:strengths.join(" "),
+  risks:challenges.join(" "),
+  money:money.join(" "),
+  relationships:relationships.join(" "),
+  purpose:purpose.join(" "),
+  synthesis:"Внутренняя логика профиля читается как переход от способа воспринимать мир к способу действовать, затем к форме реализации и долгосрочному результату. Важны не отдельные цифры, а повторяющиеся темы между ними.",
+  practice:"Сильные качества стоит переводить в конкретные действия: выбрать одну ключевую цель, определить свою роль, установить измеримый результат и регулярно проверять, что действия соответствуют ценностям.",
+  disclaimer:"Нумерология — символическая система саморефлексии, а не научный метод диагностики личности или предсказания будущего."
+ };
+}
+function freeText(p:any){
+ const s=profileSynthesis(p);
+ return ["🔢 ТВОЙ НУМЕРОЛОГИЧЕСКИЙ ПРОФИЛЬ","", "📅 "+dateLabel(p.d),"",
+ "🧩 ТВОЯ СХЕМА\n"+s.architecture,
+ "✨ СУТЬ\n"+s.synthesis,
+ "🎯 ПЕРВИЧНЫЙ ВЕКТОР\n"+s.talent,
+ "","🧠 Ум "+p.fourNumbers.mind+" · ⚙️ Действие "+p.fourNumbers.action+" · 🎯 Реализация "+p.fourNumbers.realization+" · 🌙 Итог "+p.fourNumbers.outcome,
+ "","💎 Полный профиль соединяет эти числа с талантами, отношениями, деньгами, предназначением и практическими рекомендациями.","",s.disclaimer].join("\n");
+}
+function premiumText(p:any){
+ const s=profileSynthesis(p);
+ return ["💎 ПОЛНЫЙ ПРОФИЛЬ ASTRA AURA","", "📅 "+dateLabel(p.d),"",
+ "🧬 ЯДРО ПРОФИЛЯ",""+s.architecture,
+ "","✨ СИНТЕЗ",""+s.synthesis,
+ "","🌟 ТАЛАНТЫ И СИЛЬНЫЕ СТОРОНЫ",""+s.talent,"",""+s.strengths,
+ "","🧠 КАК ТЫ ВОСПРИНИМАЕШЬ МИР · УМ "+p.fourNumbers.mind,""+mindSection(p),
+ "","⚙️ КАК ТЫ ДЕЙСТВУЕШЬ · ДЕЙСТВИЕ "+p.fourNumbers.action,""+actionSection(p),
+ "","🎯 КАК ТЫ РЕАЛИЗУЕШЬСЯ · РЕАЛИЗАЦИЯ "+p.fourNumbers.realization,""+realizationSection(p),
+ "","🌙 КУДА СХОДИТСЯ ПУТЬ · ИТОГ "+p.fourNumbers.outcome,""+outcomeSection(p),
+ "","❤️ ОТНОШЕНИЯ",""+s.relationships,
+ "","💰 ДЕНЬГИ И РЕСУРСЫ",""+s.money,
+ "","🧭 ПРЕДНАЗНАЧЕНИЕ И СМЫСЛ",""+s.purpose,
+ "","🧭 ЧИСЛО УСТАНОВКИ · "+p.nums.attitude,""+clean(p.attitude.meaning)+"\n"+clean(p.attitude.essence),
+ "","📅 ТЕКУЩИЙ ЦИКЛ","Персональный год "+p.nums.personalYear+": "+clean(p.personalYear.meaning)+"\n\n"+clean(p.personalYear.practical_advice),
+ p.personalMonth?.meaning?"🗓 Текущий месяц · число "+p.nums.personalMonth+"\n"+clean(p.personalMonth.meaning)+"\n"+clean(p.personalMonth.practical_advice):"",
+ p.nums.karmic?"♾ Кармическая тема: "+p.nums.karmic:"",
+ "","🛠 ПРАКТИЧЕСКИЙ ВЕКТОР",""+s.practice,
+ "","⚠️ ЗОНЫ ВНИМАНИЯ",""+s.risks,
+ "","🌙 ИТОГ","Профиль не определяет твою судьбу. Его задача — дать символическую карту для наблюдения за собой, выбора целей и более осознанных решений.",
+ "",""+s.disclaimer,"","ASTRA AURA ✨"].filter(Boolean).join("\n");
+}
+function mindSection(p:any){return clean(p.mind.meaning)+"\n\nСильные стороны: "+clean(p.mind.strengths)+"\n\nЗона внимания: "+clean(p.mind.challenges)+"\n\nПрактика: "+clean(p.mind.practical_advice);}
+function actionSection(p:any){return clean(p.action.meaning)+"\n\nСильные стороны: "+clean(p.action.strengths)+"\n\nЗона внимания: "+clean(p.action.challenges)+"\n\nПрактика: "+clean(p.action.practical_advice);}
+function realizationSection(p:any){return clean(p.realization.meaning)+"\n\nСильные стороны: "+clean(p.realization.strengths)+"\n\nЗона внимания: "+clean(p.realization.challenges)+"\n\nДеньги: "+clean(p.realization.money)+"\n\nРеализация: "+clean(p.realization.realization)+"\n\nПрактика: "+clean(p.realization.practical_advice);}
+function outcomeSection(p:any){return clean(p.outcome.meaning)+"\n\nСильные стороны: "+clean(p.outcome.strengths)+"\n\nЗона внимания: "+clean(p.outcome.challenges)+"\n\nСмысл: "+clean(p.outcome.purpose)+"\n\nПрактика: "+clean(p.outcome.practical_advice);}
 function buyKeyboard(p:any,payload:string){return{inline_keyboard:[[{text:"💎 "+p.title+" · "+p.stars+"⭐",callback_data:"buy:"+p.key+":"+payload}]]};}
 async function invoice(chatId:number,p:any,payload:string,description:string){
  const body:any={title:p.title,description,payload,currency:"XTR",prices:[{label:p.title,amount:p.stars}]};
