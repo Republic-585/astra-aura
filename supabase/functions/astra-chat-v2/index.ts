@@ -9,7 +9,7 @@ const PRODUCTS={
  bundle:{key:"aura_max_bundle_v1",stars:599,title:"ASTRA AURA MAX"}
 };
 const MONTH=2592000;
-const PWA_URL="https://republic-585.github.io/astra-aura/";
+const PWA_URL="https://republic-585.github.io/astra-aura/?v=6";
 const menu={keyboard:[
  [{text:"👤 Мой кабинет",web_app:{url:PWA_URL}}],
  [{text:"🔢 Нумерология"},{text:"🤝 Совместимость"}],
