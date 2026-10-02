@@ -51,12 +51,12 @@ async function paid(chatId:number,user:any,payload:string,payment:any){
  else if(p.key===PRODUCTS.bundle.key){
    const m=payload.match(/^aura_max_bundle_v1:(\d{2}\.\d{2}\.\d{4})$/),x=m?await profile(m[1]):null;
    if(x){
-     const out=["👑 ASTRA AURA MAX","", "Один пакет, три слоя разбора ✨","", premiumText(x),
-       "","🤝 СОВМЕСТИМОСТЬ","Этот блок готовится для второй даты. Введи её в меню «Совместимость», чтобы получить парный разбор.",
-       "","🔮 ПРОГНОЗ НА ГОД","Полный прогноз на 12 месяцев уже доступен в отдельном разделе.",
-       "","💎 Ты открыл MAX за 599⭐ вместо 747⭐ при покупке трёх продуктов отдельно.",
-       "","Спасибо, что выбрал ASTRA AURA MAX ❤️"].join("\n");
-     await sendLong(chatId,out,mainKeyboard());
+     const out=["👑 ASTRA AURA MAX","", "Три направления в одном пакете ✨","", premiumText(x),
+       "","🔮 ПРОГНОЗ НА ГОД","\n"+new Date().getUTCFullYear()+" · персональный год "+x.nums.personalYear,"",clean(x.personalYear.meaning),"","🗓 12 МЕСЯЦЕВ"];
+     for(let mo=1;mo<=12;mo++){const n=reduceNumber(x.nums.personalYear+mo),r=await row("personal_month",String(n));out.push("\n"+mo+". "+clean(r.title)+" · число "+n,clean(r.meaning),clean(r.practical_advice));}
+     out.push("","🤝 Теперь введи вторую дату рождения, чтобы завершить парный разбор ASTRA AURA MAX ❤️");
+     await setSession(user.id,"compatibility_bundle",1,{date1:m[1]});
+     await sendLong(chatId,out.join("\n"));
    }
  } else await tg("sendMessage",{chat_id:chatId,text:"🌟 ASTRA AURA Club активирован. Каждый месяц доступны расширенные материалы, новые циклы и будущие функции ✨",...mainKeyboard()});
 }
@@ -89,6 +89,12 @@ async function handle(update:any){
  if(text==="❓ Помощь"){await tg("sendMessage",{chat_id:chatId,text:"❓ ПОМОЩЬ\n\n1. Выбери направление.\n2. Отправь дату или две даты.\n3. Получи бесплатный предварительный результат.\n4. Если захочешь глубже, открой полный продукт 💎",...mainKeyboard()});return;}
 
  const s=await getSession(user.id),d=parseDate(text);
+ if(s?.mode==="compatibility_bundle"){
+   if(!d){await tg("sendMessage",{chat_id:chatId,text:"Нужна вторая дата ДД.ММ.ГГГГ 🙂",...mainKeyboard()});return;}
+   const a=await profile(s.data.date1),b=await profile(dateLabel(d));await clearSession(user.id);
+   if(a&&b){const cc=await compatibility(a.nums.life,b.nums.life);await event(user.id,"bundle_compatibility_completed",PRODUCTS.bundle.key);
+     await sendLong(chatId,["❤️ ASTRA AURA MAX · СОВМЕСТИМОСТЬ","",dateLabel(a.d)+" · "+labelNumber(a.nums.life),dateLabel(b.d)+" · "+labelNumber(b.nums.life),"","✨ "+clean(cc.meaning),"","💪 Сильные стороны\n"+clean(cc.strengths),"","⚠️ Зона внимания\n"+clean(cc.challenges),"","🗣 Как договариваться\n"+clean(cc.guidance),"","🌙 Итог\nЦифры не решают за вас, подходит ли человек. Они помогают увидеть темы для разговора и договорённостей.","","👑 Пакет MAX завершён. Спасибо за доверие ❤️"].join("\n"),mainKeyboard());return;}
+ }
  if(s?.mode==="compatibility"){
    if(!d){await tg("sendMessage",{chat_id:chatId,text:"Нужна дата ДД.ММ.ГГГГ 🙂",...mainKeyboard()});return;}
    if(s.step===1){await setSession(user.id,"compatibility",2,{date1:dateLabel(d)});await tg("sendMessage",{chat_id:chatId,text:"Принял 👍\n\nТеперь отправь вторую дату рождения.",...mainKeyboard()});return;}
