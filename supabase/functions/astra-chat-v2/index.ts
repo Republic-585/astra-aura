@@ -401,7 +401,7 @@ async function handleUpdate(update: any) {
       text: freeText(profile),
       reply_markup: {
         inline_keyboard: [[
-          { text: "💎 Полный профиль · " + PRODUCT_STARS + "⭐", callback_data: "buy_profile" }
+          { text: "💎 Полный профиль · " + PRODUCT_STARS + "⭐", callback_data: "buy_profile:" + String(d.day).padStart(2, "0") + "." + String(d.month).padStart(2, "0") + "." + d.year }
         ]]
       }
     });
@@ -434,14 +434,13 @@ Deno.serve(async (req) => {
     if (update.callback_query) {
       const c = update.callback_query;
       await tg("answerCallbackQuery", { callback_query_id: c.id });
-      if (c.data === "buy_profile" && c.message?.chat?.id) {
+      if (typeof c.data === "string" && c.data.startsWith("buy_profile:") && c.message?.chat?.id) {
         const chatId = c.message.chat.id;
-        const sourceText = String(c.message.text ?? "");
-        const dateMatch = sourceText.match(/\b(\d{2}\.\d{2}\.\d{4})\b/);
-        if (!dateMatch) {
+        const dateMatch = c.data.match(/^buy_profile:(\d{2}\.\d{2}\.\d{4})$/);
+        if (!dateMatch || !parseDate(dateMatch[1])) {
           await tg("sendMessage", {
             chat_id: chatId,
-            text: "💎 Я не смог найти дату в этом сообщении. Отправь её ещё раз в формате ДД.ММ.ГГГГ 🙂",
+            text: "💎 Не удалось определить дату заказа. Отправь дату ещё раз в формате ДД.ММ.ГГГГ 🙂",
             ...mainKeyboard()
           });
           return;
