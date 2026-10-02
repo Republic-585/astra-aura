@@ -126,8 +126,10 @@ async function handle(update:any){
 
 Deno.serve(async(req)=>{
  try{
-  if(req.method!=="POST")return new Response("ASTRA AURA v39",{status:200});
-  if(!BOT_TOKEN||!SUPABASE_URL||!SUPABASE_SERVICE_ROLE_KEY)return new Response("configuration error",{status:500});
+  const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
+  if(req.method==="OPTIONS")return new Response("ok",{status:204,headers:cors});
+  if(req.method!=="POST")return new Response("ASTRA AURA v40",{status:200,headers:cors});
+  if(!BOT_TOKEN||!SUPABASE_URL||!SUPABASE_SERVICE_ROLE_KEY)return new Response(JSON.stringify({error:"configuration error"}),{status:500,headers:{...cors,"Content-Type":"application/json"}});
   const u=await req.json();
   if(u.callback_query){
    const c=u.callback_query;await tg("answerCallbackQuery",{callback_query_id:c.id});const data=String(c.data??"");
@@ -142,5 +144,5 @@ Deno.serve(async(req)=>{
    return new Response("ok");
   }
   await handle(u);return new Response("ok",{headers:cors});
- }catch(e){console.error(e);return new Response("ok");}
+ }catch(e){console.error(e);return new Response(JSON.stringify({error:"internal_error"}),{status:500,headers:{...cors,"Content-Type":"application/json"}});}
 });
