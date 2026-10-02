@@ -20,6 +20,7 @@ function tg(method:string,body:Record<string,unknown>){return fetch("https://api
 async function db(path:string,options:RequestInit={}){const r=await fetch(SUPABASE_URL+"/rest/v1/"+path,{...options,headers:{apikey:SUPABASE_SERVICE_ROLE_KEY,Authorization:"Bearer "+SUPABASE_SERVICE_ROLE_KEY,"content-type":"application/json",...(options.headers||{})}});if(!r.ok)throw new Error("DB "+r.status+": "+await r.text());const raw=await r.text();return raw.trim()?JSON.parse(raw):null;}
 function digits(s:string){return s.replace(/\D/g,"").split("").reduce((a,x)=>a+Number(x),0);}
 function reduceNumber(v:number){let n=v;while(n>9&&!([11,22,33].includes(n)))n=String(n).split("").reduce((a,x)=>a+Number(x),0);return n;}
+function singleDigit(v:number){let n=Math.abs(v);while(n>9)n=String(n).split("").reduce((a,x)=>a+Number(x),0);return n;}
 function baseNumber(n:number){return [11,22,33].includes(n)?Number(String(n).split("").reduce((a,x)=>a+Number(x),0)):n;}
 function parseDate(s:string){const m=s.trim().match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);if(!m)return null;const day=+m[1],month=+m[2],year=+m[3],d=new Date(Date.UTC(year,month-1,day));if(d.getUTCFullYear()!==year||d.getUTCMonth()!==month-1||d.getUTCDate()!==day||year<1900||year>2100)return null;return{day,month,year};}
 function dateLabel(d:any){return String(d.day).padStart(2,"0")+"."+String(d.month).padStart(2,"0")+"."+d.year;}
@@ -142,16 +143,24 @@ async function profile(s:string){
  const currentYear=new Date().getUTCFullYear();
  const personalYear=baseNumber(reduceNumber(d.month+d.day+digits(String(currentYear))));
  const personalMonth=baseNumber(reduceNumber(personalYear+new Date().getUTCMonth()+1));
+ const mind=singleDigit(d.day);
+ const action=singleDigit(digits(String(d.day).padStart(2,"0")+String(d.month).padStart(2,"0")+String(d.year)));
+ const realizationNumber=singleDigit(mind+action);
+ const outcome=singleDigit(mind+action+realizationNumber);
  const full=digits(String(d.day).padStart(2,"0")+String(d.month).padStart(2,"0")+String(d.year));
  const karmic=[13,14,16,19].includes(full)?full:([13,14,16,19].includes(d.day)?d.day:null);
  const lifeCategory=[11,22,33].includes(life)?"master":"core";
  const attitudeCategory=[11,22,33].includes(attitude)?"master":"core";
- const [lifeRow,birthdayRow,attitudeRow,yearRow,monthRow,lifeRule,birthdayRule,attitudeRule,yearRule,monthRule]=await Promise.all([
+ const [lifeRow,birthdayRow,attitudeRow,yearRow,monthRow,mindRow,actionRow,realizationRow,outcomeRow,lifeRule,birthdayRule,attitudeRule,yearRule,monthRule]=await Promise.all([
    row(lifeCategory,String(life)),
    row("birthday",String(d.day)),
    row(attitudeCategory,String(attitude)),
    row("personal_year",String(personalYear)),
    row("personal_month",String(personalMonth)),
+   row("mind",String(mind)),
+   row("action",String(action)),
+   row("realization",String(realizationNumber)),
+   row("outcome",String(outcome)),
    rule("life_path"),
    rule("birthday"),
    rule("attitude"),
@@ -166,11 +175,16 @@ async function profile(s:string){
    attitude:attitudeRow,
    personalYear:yearRow,
    personalMonth:monthRow,
+   mind:mindRow,
+   action:actionRow,
+   realization:realizationRow,
+   outcome:outcomeRow,
+   fourNumbers:{mind,action,realization:realizationNumber,outcome},
    rules:{life:lifeRule,birthday:birthdayRule,attitude:attitudeRule,personalYear:yearRule,personalMonth:monthRule}
  };
 }
-function freeText(p:any){return["🔢 ТВОЙ НУМЕРОЛОГИЧЕСКИЙ ПРОФИЛЬ","","📅 "+dateLabel(p.d),"","✨ Жизненный путь: "+labelNumber(p.nums.life),clean(p.life.meaning),"","🎂 День рождения: "+p.d.day,clean(p.birthday.meaning),"","🧭 Число установки: "+p.nums.attitude,clean(p.attitude.meaning),"","📅 Персональный год "+new Date().getUTCFullYear()+": "+p.nums.personalYear,clean(p.personalYear.meaning),"","💎 Полный профиль: отношения, деньги, реализация, сильные стороны и практические рекомендации."].join("\n");}
-function premiumText(p:any){return["💎 ПОЛНЫЙ ПРОФИЛЬ ASTRA AURA","", "📅 "+dateLabel(p.d),"","✨ ЖИЗНЕННЫЙ ПУТЬ: "+labelNumber(p.nums.life),clean(p.life.meaning),clean(p.life.essence),"💪 Сильные стороны\n"+clean(p.life.strengths),"⚠️ Что может мешать\n"+clean(p.life.challenges),"🎯 Реализация\n"+clean(p.life.realization),"💰 Деньги\n"+clean(p.life.money),"❤️ Отношения\n"+clean(p.life.relationships),"🧭 Смысл\n"+clean(p.life.purpose),"💡 Совет\n"+clean(p.life.practical_advice),"","🎂 ДЕНЬ РОЖДЕНИЯ: "+p.d.day,clean(p.birthday.meaning),"💪 "+clean(p.birthday.strengths),"⚠️ "+clean(p.birthday.challenges),"❤️ "+clean(p.birthday.relationships),"","🧭 ЧИСЛО УСТАНОВКИ: "+p.nums.attitude,clean(p.attitude.meaning),clean(p.attitude.essence),"","📅 ПЕРСОНАЛЬНЫЙ ГОД: "+p.nums.personalYear,clean(p.personalYear.meaning),clean(p.personalYear.essence),clean(p.personalYear.practical_advice),p.personalMonth?.meaning?"🗓 Текущий месяц · число "+p.nums.personalMonth+"\n"+clean(p.personalMonth.meaning)+"\n"+clean(p.personalMonth.practical_advice):"",p.nums.karmic?"♾ Кармическая тема: "+p.nums.karmic:"","🌙 ИТОГ","Твой профиль складывается из нескольких чисел. Посмотри, какие темы откликаются именно тебе.","","ASTRA AURA ✨"].filter(Boolean).join("\n");}
+function freeText(p:any){return["🔢 ТВОЙ НУМЕРОЛОГИЧЕСКИЙ ПРОФИЛЬ","","📅 "+dateLabel(p.d),"","🧠 Число Ума: "+p.fourNumbers.mind,clean(p.mind.meaning),"⚙️ Число Действия: "+p.fourNumbers.action,clean(p.action.meaning),"🎯 Число Реализации: "+p.fourNumbers.realization,clean(p.realization.meaning),"🌙 Число Итога: "+p.fourNumbers.outcome,clean(p.outcome.meaning),"","✨ Жизненный путь: "+labelNumber(p.nums.life),clean(p.life.meaning),"","🎂 День рождения: "+p.d.day,clean(p.birthday.meaning),"","🧭 Число установки: "+p.nums.attitude,clean(p.attitude.meaning),"","📅 Персональный год "+new Date().getUTCFullYear()+": "+p.nums.personalYear,clean(p.personalYear.meaning),"","💎 Полный профиль раскрывает таланты, стиль действий, реализацию, отношения, деньги и жизненную задачу."].join("\n");}
+function premiumText(p:any){return["💎 ПОЛНЫЙ ПРОФИЛЬ ASTRA AURA","", "📅 "+dateLabel(p.d),"","✨ ЖИЗНЕННЫЙ ПУТЬ: "+labelNumber(p.nums.life),clean(p.life.meaning),clean(p.life.essence),"💪 Сильные стороны\n"+clean(p.life.strengths),"⚠️ Что может мешать\n"+clean(p.life.challenges),"🎯 Реализация\n"+clean(p.life.realization),"💰 Деньги\n"+clean(p.life.money),"❤️ Отношения\n"+clean(p.life.relationships),"🧭 Смысл\n"+clean(p.life.purpose),"💡 Совет\n"+clean(p.life.practical_advice),"","🎂 ДЕНЬ РОЖДЕНИЯ: "+p.d.day,clean(p.birthday.meaning),"💪 "+clean(p.birthday.strengths),"⚠️ "+clean(p.birthday.challenges),"❤️ "+clean(p.birthday.relationships),"","🧠 ЧИСЛО УМА: "+p.fourNumbers.mind,clean(p.mind.meaning),clean(p.mind.strengths),"⚠️ "+clean(p.mind.challenges),"💡 "+clean(p.mind.practical_advice),"","⚙️ ЧИСЛО ДЕЙСТВИЯ: "+p.fourNumbers.action,clean(p.action.meaning),clean(p.action.strengths),"⚠️ "+clean(p.action.challenges),"💡 "+clean(p.action.practical_advice),"","🎯 ЧИСЛО РЕАЛИЗАЦИИ: "+p.fourNumbers.realization,clean(p.realization.meaning),clean(p.realization.strengths),"⚠️ "+clean(p.realization.challenges),"💰 "+clean(p.realization.money),"🎯 "+clean(p.realization.realization),"💡 "+clean(p.realization.practical_advice),"","🌙 ЧИСЛО ИТОГА: "+p.fourNumbers.outcome,clean(p.outcome.meaning),clean(p.outcome.strengths),"⚠️ "+clean(p.outcome.challenges),"🧭 "+clean(p.outcome.purpose),"💡 "+clean(p.outcome.practical_advice),"","🧭 ЧИСЛО УСТАНОВКИ: "+p.nums.attitude,clean(p.attitude.meaning),clean(p.attitude.essence),"","📅 ПЕРСОНАЛЬНЫЙ ГОД: "+p.nums.personalYear,clean(p.personalYear.meaning),clean(p.personalYear.essence),clean(p.personalYear.practical_advice),p.personalMonth?.meaning?"🗓 Текущий месяц · число "+p.nums.personalMonth+"\n"+clean(p.personalMonth.meaning)+"\n"+clean(p.personalMonth.practical_advice):"",p.nums.karmic?"♾ Кармическая тема: "+p.nums.karmic:"","🌙 ИТОГ","Твой профиль складывается из нескольких чисел. Посмотри, какие темы откликаются именно тебе.","","ASTRA AURA ✨"].filter(Boolean).join("\n");}
 function buyKeyboard(p:any,payload:string){return{inline_keyboard:[[{text:"💎 "+p.title+" · "+p.stars+"⭐",callback_data:"buy:"+p.key+":"+payload}]]};}
 async function invoice(chatId:number,p:any,payload:string,description:string){
  const body:any={title:p.title,description,payload,currency:"XTR",prices:[{label:p.title,amount:p.stars}]};
