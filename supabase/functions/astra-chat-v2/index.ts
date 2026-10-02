@@ -35,6 +35,31 @@ async function isOwner(uid:number){
     return Boolean(r?.[0] && (r[0].role==="owner" || r[0].role==="admin"));
   }catch(e){console.error(e);return false;}
 }
+async function compatibility(a:number,b:number){
+ const x=Math.min(a,b),y=Math.max(a,b);
+ const r=await db("numerology_compatibility?number_a=eq."+x+"&number_b=eq."+y+"&select=*");
+ return r?.[0]??{meaning:"Сочетание двух жизненных путей стоит рассматривать через различия в темпе, ценностях и способах действовать.",strengths:"Разные качества могут дополнять друг друга.",challenges:"Различия требуют ясных договорённостей и уважения границ.",guidance:"Говорите о целях, ролях, деньгах и личном пространстве прямо."};
+}
+function rhythm(a:number,b:number){
+ if(a===b)return "резонанс";
+ const d=Math.min(Math.abs(a-b),9-Math.abs(a-b));
+ if(d<=2)return "близкий ритм";
+ if(d>=4)return "контраст";
+ return "разный ритм";
+}
+async function compatibilityLayers(a:any,b:any){
+ const specs=[{key:"mind",label:"🧠 Ум · коммуникация"},{key:"action",label:"⚙️ Действие · совместная работа"},{key:"realization",label:"🎯 Реализация · цели и деньги"},{key:"outcome",label:"🌙 Итог · долгий горизонт"}];
+ const layers=[];
+ for(const spec of specs){
+   const av=a[spec.key],bv=b[spec.key],an=a.fourNumbers[spec.key],bn=b.fourNumbers[spec.key];
+   layers.push({key:spec.key,label:spec.label,number1:an,number2:bn,relation:rhythm(an,bn),meaning1:clean(av?.meaning),meaning2:clean(bv?.meaning),strengths1:clean(av?.strengths),strengths2:clean(bv?.strengths),challenges1:clean(av?.challenges),challenges2:clean(bv?.challenges),money1:clean(av?.money),money2:clean(bv?.money),realization1:clean(av?.realization),realization2:clean(bv?.realization),purpose1:clean(av?.purpose),purpose2:clean(bv?.purpose)});
+ }
+ return {layers,communication:"Сопоставьтесь не только по совпадениям: при "+layers[0].relation+" полезно заранее договориться о темпе общения, способе обсуждать разногласия и личном пространстве.",money:"Финансовые привычки полезно обсуждать отдельно. Число Реализации показывает символические темы отношения к результату и ресурсам, но не предсказывает доход.",business:"Для бизнеса особенно важны Число Действия и Число Реализации: заранее распределите ответственность, критерии результата, деньги и право финального решения.",realizationMoney1:clean(a.realization?.money),realizationMoney2:clean(b.realization?.money)};
+}
+function compatibilityText(a:any,b:any,c:any,l:any){
+ return ["❤️ ПОЛНЫЙ РАЗБОР СОВМЕСТИМОСТИ","",dateLabel(a.d)+" · "+labelNumber(a.nums.life),dateLabel(b.d)+" · "+labelNumber(b.nums.life),"","✨ ОСНОВА ПАРЫ\n"+clean(c.meaning),"","💞 ЛИЧНЫЕ ОТНОШЕНИЯ\n"+clean(c.strengths)+"\n\nЗона внимания: "+clean(c.challenges)+"\n\nЧто важно: "+clean(c.guidance),"","🧠 КОММУНИКАЦИЯ\n"+l.communication+"\n\nПервый: число "+l.layers[0].number1+" - "+l.layers[0].meaning1+"\nВторой: число "+l.layers[0].number2+" - "+l.layers[0].meaning2,"","⚙️ ДЕЙСТВИЯ И БЫТ\nПервый: число "+l.layers[1].number1+" - "+l.layers[1].meaning1+"\nВторой: число "+l.layers[1].number2+" - "+l.layers[1].meaning2+"\n\nПрактика: "+l.layers[1].relation+" - полезно заранее разделить роли и зоны ответственности.","","🎯 ЦЕЛИ И ФИНАНСЫ\n"+l.money+"\n\nПервый: "+(l.realizationMoney1||"нет отдельного описания")+"\nВторой: "+(l.realizationMoney2||"нет отдельного описания"),"","💼 БИЗНЕС\n"+l.business+"\n\nЧисло Действия: "+l.layers[1].number1+" / "+l.layers[1].number2+"\nЧисло Реализации: "+l.layers[2].number1+" / "+l.layers[2].number2,"","🌙 ДОЛГИЙ ГОРИЗОНТ\nПервый: число "+l.layers[3].number1+" - "+l.layers[3].purpose1+"\nВторой: число "+l.layers[3].number2+" - "+l.layers[3].purpose2,"","🧭 ИТОГ\nЦифры не определяют судьбу пары и не дают объективного прогноза совместного будущего. Это символическая карта для разговора о ценностях, ролях, деньгах, границах и целях."].join("\n");
+}
+
 async function ownerDeliver(chatId:number,key:string,payload:string){
   if(key===PRODUCTS.profile.key){
     const x=await profile(payload);
@@ -59,17 +84,8 @@ async function ownerDeliver(chatId:number,key:string,payload:string){
     if(parts.length!==2)return;
     const a=await profile(parts[0]),b=await profile(parts[1]);
     if(!a||!b)return;
-    const c=await compatibility(a.nums.life,b.nums.life);
-    await sendLong(chatId,[
-      "❤️ ПОЛНЫЙ РАЗБОР СОВМЕСТИМОСТИ","",
-      dateLabel(a.d)+" · "+labelNumber(a.nums.life),
-      dateLabel(b.d)+" · "+labelNumber(b.nums.life),"",
-      "✨ "+clean(c.meaning),"",
-      "💪 Сильная сторона\n"+clean(c.strengths),"",
-      "⚠️ Зона внимания\n"+clean(c.challenges),"",
-      "🗣 Как договариваться\n"+clean(c.guidance),"",
-      "🌙 Итог\nЦифры не решают за вас, подходит ли человек. Они помогают точнее увидеть темы для разговора и договорённостей."
-    ].join("\n"),mainKeyboard());
+    const c=await compatibility(a.nums.life,b.nums.life),l=await compatibilityLayers(a,b);
+    await sendLong(chatId,compatibilityText(a,b,c,l),mainKeyboard());
     return;
   }
   if(key===PRODUCTS.club.key){
@@ -201,7 +217,7 @@ async function paid(chatId:number,user:any,payload:string,payment:any){
  await db("numerology_purchases",{method:"POST",headers:{Prefer:"resolution=ignore-duplicates"},body:JSON.stringify({telegram_user_id:user.id,username:user.username??null,product_key:p.key,payload,currency:payment.currency,amount:payment.total_amount,telegram_charge_id:payment.telegram_payment_charge_id,is_recurring:Boolean(payment.is_recurring),subscription_expiration_date:payment.subscription_expiration_date?new Date(payment.subscription_expiration_date*1000).toISOString():null})});
  await event(user.id,"payment_success",p.key,{amount:payment.total_amount,recurring:Boolean(payment.is_recurring)});
  if(p.key===PRODUCTS.profile.key){const m=payload.match(/^full_numerology_profile_v1:(\d{2}\.\d{2}\.\d{4})$/),x=m?await profile(m[1]):null;if(x)await sendLong(chatId,premiumText(x),mainKeyboard());}
- else if(p.key===PRODUCTS.compatibility.key){const m=payload.match(/^compatibility_v1:(\d{2}\.\d{2}\.\d{4})\|(\d{2}\.\d{2}\.\d{4})$/),a=m?await profile(m[1]):null,b=m?await profile(m[2]):null;if(a&&b){const c=await compatibility(a.nums.life,b.nums.life);await sendLong(chatId,["❤️ ПОЛНЫЙ РАЗБОР СОВМЕСТИМОСТИ","",dateLabel(a.d)+" · "+labelNumber(a.nums.life),dateLabel(b.d)+" · "+labelNumber(b.nums.life),"","✨ "+clean(c.meaning),"","💪 Сильная сторона\n"+clean(c.strengths),"","⚠️ Зона внимания\n"+clean(c.challenges),"","🗣 Как договариваться\n"+clean(c.guidance),"","🎂 Дополнительный слой\nДни рождения: "+a.d.day+" и "+b.d.day+".","📅 Текущие циклы\nВаши персональные годы: "+a.nums.personalYear+" и "+b.nums.personalYear+".","🌙 Итог\nЦифры не решают за вас, подходит ли человек. Они помогают точнее увидеть темы для разговора и договорённостей.","","Берегите живого человека за цифрами ❤️"].join("\n"),mainKeyboard());}}
+ else if(p.key===PRODUCTS.compatibility.key){const m=payload.match(/^compatibility_v1:(\d{2}\.\d{2}\.\d{4})\|(\d{2}\.\d{2}\.\d{4})$/),a=m?await profile(m[1]):null,b=m?await profile(m[2]):null;if(a&&b){const c=await compatibility(a.nums.life,b.nums.life),l=await compatibilityLayers(a,b);await sendLong(chatId,compatibilityText(a,b,c,l),mainKeyboard());}}
  else if(p.key===PRODUCTS.forecast.key){const m=payload.match(/^annual_forecast_v1:(\d{2}\.\d{2}\.\d{4})$/),x=m?await profile(m[1]):null;if(x){const out=["🔮 ПОЛНЫЙ ПРОГНОЗ ASTRA AURA","",x.nums.currentYear+" · персональный год "+x.nums.personalYear,"",clean(x.personalYear.meaning),"","🗓 12 МЕСЯЦЕВ"];for(let mo=1;mo<=12;mo++){const n=baseNumber(reduceNumber(x.nums.personalYear+mo)),r=await row("personal_month",String(n));out.push("\n"+mo+". "+clean(r.title)+" · число "+n,clean(r.meaning),clean(r.practical_advice));}out.push("","🌙 Итог\nЭто карта тем для саморефлексии и планирования, а не обещание конкретных событий.");await sendLong(chatId,out.join("\n"),mainKeyboard());}}
  else await tg("sendMessage",{chat_id:chatId,text:"🌟 ASTRA AURA Club активирован. Каждый месяц доступны расширенные материалы, новые циклы и будущие функции ✨",...mainKeyboard()});
 }
@@ -214,7 +230,7 @@ async function handleWeb(body:any){
  if(action==="save_person"){if(!initData)throw new Error("telegram_auth_required");const name=String(body?.name??"").trim(),birthDate=String(body?.birth_date??"").trim();if(!name||!parseDate(birthDate))throw new Error("invalid_person");return {ok:true,mode:"cabinet",person:await saveCabinetPerson(initData,name,birthDate)};}
  if(action==="reading"){
   const mode=String(body?.mode??"numerology"),d1=String(body?.date1??"").trim(),d2=String(body?.date2??"").trim(),a=await profile(d1);if(!a)throw new Error("invalid_date");
-  if(mode==="compatibility"){const b=await profile(d2);if(!b)throw new Error("invalid_second_date");const c=await compatibility(a.nums.life,b.nums.life),answer=["❤️ СОВМЕСТИМОСТЬ","",dateLabel(a.d)+" · "+labelNumber(a.nums.life),dateLabel(b.d)+" · "+labelNumber(b.nums.life),"","✨ "+clean(c.meaning),"","💪 Сильная сторона\n"+clean(c.strengths),"","⚠️ Зона внимания\n"+clean(c.challenges),"","🗣 Как договариваться\n"+clean(c.guidance),"","Это интерпретация для саморефлексии, а не прогноз отношений."].join("\n");const reading=initData?await saveReading(initData,"compatibility","Совместимость",{date1:d1,date2:d2},{answer,life1:a.nums.life,life2:b.nums.life,compatibility:c},false):null;return {ok:true,mode,answer,reading,cabinet:initData?await cabinetData(initData):null};}
+  if(mode==="compatibility"){const b=await profile(d2);if(!b)throw new Error("invalid_second_date");const c=await compatibility(a.nums.life,b.nums.life),l=await compatibilityLayers(a,b),answer=["❤️ СОВМЕСТИМОСТЬ","",""+dateLabel(a.d)+" · "+labelNumber(a.nums.life),dateLabel(b.d)+" · "+labelNumber(b.nums.life),"","✨ "+clean(c.meaning),"","🧠 Коммуникация: "+l.layers[0].relation,"⚙️ Действия: "+l.layers[1].relation,"🎯 Реализация: "+l.layers[2].relation,"🌙 Итог: "+l.layers[3].relation,"","💎 Полный разбор раскрывает отношения, коммуникацию, деньги и бизнес.","","Это интерпретация для саморефлексии, а не прогноз отношений."].join("\n");const reading=initData?await saveReading(initData,"compatibility","Совместимость",{date1:d1,date2:d2},{answer,life1:a.nums.life,life2:b.nums.life,compatibility:c,layers:l},false):null;return {ok:true,mode,answer,reading,cabinet:initData?await cabinetData(initData):null};}
   if(mode==="forecast"){const months=[];for(let mo=1;mo<=12;mo++){const n=baseNumber(reduceNumber(a.nums.personalYear+mo)),r=await row("personal_month",String(n));months.push({month:mo,number:n,title:clean(r.title),meaning:clean(r.meaning),practical_advice:clean(r.practical_advice)})}const answer=["🔮 ПРОГНОЗ НА "+a.nums.currentYear,"","Персональный год: "+a.nums.personalYear,"",clean(a.personalYear.meaning),"","Полный прогноз раскрывает все 12 месяцев."].join("\n");const reading=initData?await saveReading(initData,"forecast","Прогноз на "+a.nums.currentYear,{date:d1},{year:a.nums.currentYear,personalYear:a.nums.personalYear,meaning:clean(a.personalYear.meaning),months},false):null;return {ok:true,mode,answer,reading,cabinet:initData?await cabinetData(initData):null};}
   const answer=freeText(a),reading=initData?await saveReading(initData,"profile","Нумерологический профиль",{date:d1},{numbers:a.nums,answer},false):null;return {ok:true,mode:"numerology",answer,reading,cabinet:initData?await cabinetData(initData):null};
  }
