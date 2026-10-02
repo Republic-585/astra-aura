@@ -3,23 +3,21 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#090812"><meta name="description" content="ASTRA AURA — нумерология и спокойная рефлексия.">
-<link rel="manifest" href="./manifest.json"><link rel="stylesheet" href="./styles.css?v=3"><title>ASTRA AURA</title>
+<link rel="manifest" href="./manifest.json"><link rel="stylesheet" href="./styles.css?v=4"><title>ASTRA AURA</title>
 </head>
 <body><div class="app-shell">
-<header class="topbar"><div class="brand"><div class="brand-mark">✦</div><div><div class="brand-name">ASTRA AURA</div><div class="brand-subtitle">NUMEROLOGY & REFLECTION</div></div></div><button class="icon-button" id="profileButton" aria-label="Профиль">◌</button></header>
+<header class="topbar"><div class="brand"><div class="brand-mark">✦</div><div><div class="brand-name">ASTRA AURA</div><div class="brand-subtitle">NUMEROLOGY & REFLECTION</div></div></div><button class="icon-button" id="profileButton" aria-label="Личный кабинет">◌</button></header>
 <main>
 <section class="hero"><div class="eyebrow">ASTRA AURA</div><h1>Узнай<br><span>свои числа.</span></h1><p>Начни с даты рождения. Без города и времени — только то, что действительно нужно для первого разбора.</p><button class="primary-button" id="startButton">Начать <span>→</span></button></section>
-<section class="quick-grid">
-<button class="feature-card" data-mode="numerology"><span class="feature-icon">🔢</span><strong>Нумерология</strong><small>Мой профиль</small></button>
-<button class="feature-card" data-mode="compatibility"><span class="feature-icon">🤝</span><strong>Совместимость</strong><small>Две даты</small></button>
-<button class="feature-card" data-mode="forecast"><span class="feature-icon">🔮</span><strong>Прогноз</strong><small>Тема года</small></button>
+<section class="quick-grid"><button class="feature-card" data-mode="numerology"><span class="feature-icon">🔢</span><strong>Нумерология</strong><small>Мой профиль</small></button><button class="feature-card" data-mode="compatibility"><span class="feature-icon">🤝</span><strong>Совместимость</strong><small>Две даты</small></button><button class="feature-card" data-mode="forecast"><span class="feature-icon">🔮</span><strong>Прогноз</strong><small>Тема года</small></button></section>
+<section class="chat-panel" id="chatPanel"><div class="section-heading"><div><div class="eyebrow">ASTRA</div><h2 id="chatTitle">С чего начнём?</h2></div><span class="status-dot">online</span></div><div class="messages" id="messages"><div class="message assistant"><div class="message-avatar">✦</div><div class="bubble">Отправь дату рождения в формате ДД.ММ.ГГГГ. Например: 04.05.1993</div></div></div><form class="chat-form" id="chatForm"><input id="messageInput" autocomplete="off" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="1000"><button aria-label="Отправить">↑</button></form></section>
+<section class="cabinet-panel" id="cabinetPanel"><div class="section-heading"><div><div class="eyebrow">PERSONAL SPACE</div><h2>Личный кабинет</h2></div><span class="owner-badge">MY SPACE</span></div>
+<div class="cabinet-head"><div><h3 id="cabinetName">Мой профиль</h3><p id="cabinetDate">Дата рождения не задана</p></div><div class="cabinet-orb">✦</div></div>
+<div id="cabinetEmpty" class="cabinet-empty"><p>Создай профиль — и здесь будут твои основные числа и текущие циклы.</p><button class="primary-button" onclick="scrollToId('birthPanel')">Создать профиль <span>→</span></button></div>
+<div id="cabinetData" hidden><div class="number-grid"><div class="number-card"><small>Жизненный путь</small><strong id="lifeNumber">—</strong></div><div class="number-card"><small>Число установки</small><strong id="attitudeNumber">—</strong></div><div class="number-card"><small>Персональный год</small><strong id="yearNumber">—</strong><span id="cycleYear">—</span></div><div class="number-card"><small>Персональный месяц</small><strong id="monthNumber">—</strong><span id="cycleMonth">—</span></div></div>
+<div class="cabinet-section"><div class="section-heading"><div><div class="eyebrow">CONNECTIONS</div><h3>Сохранённые связи <span id="peopleCount">0</span></h3></div></div><div id="peopleList" class="people-list"></div><form id="savePersonForm" class="save-person-form"><input id="personName" placeholder="Имя" maxlength="60"><input id="personDate" type="date"><button aria-label="Сохранить">+</button></form></div></div>
 </section>
-<section class="chat-panel" id="chatPanel"><div class="section-heading"><div><div class="eyebrow">ASTRA</div><h2 id="chatTitle">С чего начнём?</h2></div><span class="status-dot">online</span></div>
-<div class="messages" id="messages"><div class="message assistant"><div class="message-avatar">✦</div><div class="bubble">Отправь дату рождения в формате ДД.ММ.ГГГГ. Например: 04.05.1993</div></div></div>
-<form class="chat-form" id="chatForm"><input id="messageInput" autocomplete="off" inputmode="numeric" placeholder="ДД.ММ.ГГГГ" maxlength="1000"><button aria-label="Отправить">↑</button></form></section>
-<section class="birth-panel" id="birthPanel"><div class="section-heading"><div><div class="eyebrow">PROFILE</div><h2>Моя дата</h2></div></div>
-<form id="birthForm" class="birth-form"><label>Дата рождения<input type="date" id="birthDate" required></label><button class="primary-button" type="submit">Получить разбор <span>→</span></button></form>
-<p class="privacy-note">Дата хранится только в локальном профиле этого устройства. API-ключи не передаются в браузер.</p></section>
+<section class="birth-panel" id="birthPanel"><div class="section-heading"><div><div class="eyebrow">PROFILE</div><h2>Мои данные</h2></div></div><form id="birthForm" class="birth-form"><label>Имя<input type="text" id="userName" placeholder="Как к тебе обращаться?" maxlength="60"></label><label>Дата рождения<input type="date" id="birthDate" required></label><button class="primary-button" type="submit">Сохранить и получить разбор <span>→</span></button></form><p class="privacy-note">Пока профиль хранится локально на этом устройстве. На следующем этапе подключим полноценную авторизацию и синхронизацию кабинета через Supabase.</p></section>
 </main>
-<nav class="bottom-nav"><button class="nav-item active" data-scroll="top"><span>✦</span><small>Главная</small></button><button class="nav-item" data-scroll="chatPanel"><span>◒</span><small>Разбор</small></button><button class="nav-item" data-scroll="birthPanel"><span>◌</span><small>Профиль</small></button></nav>
-</div><script src="./app.js?v=3"></script></body></html>
+<nav class="bottom-nav"><button class="nav-item active" data-scroll="top"><span>✦</span><small>Главная</small></button><button class="nav-item" data-scroll="chatPanel"><span>◒</span><small>Разбор</small></button><button class="nav-item" data-scroll="cabinetPanel"><span>◌</span><small>Кабинет</small></button></nav>
+</div><script src="./app.js?v=4"></script></body></html>
