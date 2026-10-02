@@ -10,9 +10,9 @@ const MONTH=2592000;
 const PWA_URL="https://republic-585.github.io/astra-aura/?v=6";
 const menu={keyboard:[
  [{text:"👤 Мой кабинет",web_app:{url:PWA_URL}}],
- [{text:"🔢 Нумерология"},{text:"🤝 Совместимость"}],
- [{text:"🔮 Прогноз на год"},{text:"💎 ASTRA AURA Club"}],
- [{text:"📖 Справочник"},{text:"🧾 Мои покупки"}],
+ [{text:"🔮 РАЗБОР"}],
+ [{text:"💎 ASTRA AURA Club"}],
+ [{text:"🧾 Мои покупки"}],
 ],resize_keyboard:true,is_persistent:true};
 
 function tg(method:string,body:Record<string,unknown>){return fetch("https://api.telegram.org/bot"+BOT_TOKEN+"/"+method,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)}).then(async r=>{const d=await r.json();if(!d.ok)throw new Error(JSON.stringify(d));return d.result;});}
