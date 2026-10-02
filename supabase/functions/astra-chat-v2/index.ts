@@ -7,7 +7,7 @@ const PRODUCTS={
  club:{key:"aura_club_monthly_v1",stars:99,title:"ASTRA AURA Club"}
 };
 const MONTH=2592000;
-const PWA_URL="https://republic-585.github.io/astra-aura/?v=7";
+const PWA_URL="https://republic-585.github.io/astra-aura/?v=9";
 const menu={keyboard:[
  [{text:"👤 Мой кабинет",web_app:{url:PWA_URL}}],
  [{text:"🔮 РАЗБОР"}],
