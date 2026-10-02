@@ -144,7 +144,22 @@ async function rule(ruleKey:string){
  const r=await db("numerology_rules?rule_key=eq."+encodeURIComponent(ruleKey)+"&select=*");
  return r?.[0]??{};
 }
-async function profile(s:string){
+async function weeklyForecast(p:any){
+ const now=new Date(),out:any[]=[],currentYear=now.getUTCFullYear(),startDay=now.getUTCDate(),startMonth=now.getUTCMonth()+1;
+ for(let i=0;i<7;i++){
+  const dt=new Date(Date.UTC(currentYear,startMonth-1,startDay+i)),y=dt.getUTCFullYear(),m=dt.getUTCMonth()+1,d=dt.getUTCDate();
+  const py=baseNumber(reduceNumber(p.d.month+p.d.day+digits(String(y)))),pm=baseNumber(reduceNumber(py+m)),pd=baseNumber(reduceNumber(pm+d));
+  out.push({date:String(d).padStart(2,"0")+"."+String(m).padStart(2,"0")+"."+y,number:pd});
+ }
+ return out;
+}
+async function breakdownText(p:any){
+ const s=profileSynthesis(p),w=weeklyForecast(p),lines=["🔮 ASTRA AURA · РАЗБОР","","📅 "+dateLabel(p.d),"","🧬 ТВОЯ АРХИТЕКТУРА",s.architecture,"","✨ СУТЬ",s.synthesis,"","🌟 ТАЛАНТЫ И СИЛЬНЫЕ СТОРОНЫ",s.talent,s.strengths,"","🧠 УМ · "+p.fourNumbers.mind,clean(p.mind?.meaning),"","⚙️ ДЕЙСТВИЕ · "+p.fourNumbers.action,clean(p.action?.meaning),"","🎯 РЕАЛИЗАЦИЯ · "+p.fourNumbers.realization,clean(p.realization?.meaning),"","🌙 ИТОГ · "+p.fourNumbers.outcome,clean(p.outcome?.meaning),"","❤️ ОТНОШЕНИЯ",s.relationships,"","💰 ДЕНЬГИ И РЕСУРСЫ",s.money,"","🧭 ПРЕДНАЗНАЧЕНИЕ",s.purpose,"","📆 ПРОГНОЗ НА БЛИЖАЙШИЕ 7 ДНЕЙ"];
+ for(const x of w){const r=await row("personal_day",String(x.number));lines.push("",x.date+" · число дня "+x.number,clean(r.title),clean(r.meaning),clean(r.practical_advice));}
+ lines.push("","💎 СОВМЕСТИМОСТЬ","Полный разбор совместимости раскроет отношения, коммуникацию, быт, цели и финансы.");
+ return lines.join("\n");
+}
+function profile(s:string){
  const d=parseDate(s);
  if(!d)return null;
  const yearSum=digits(String(d.year));
@@ -342,9 +357,8 @@ async function handle(update:any){
    await tg("sendMessage",{chat_id:chatId,text:"✨ ASTRA AURA\n\nРазберём числа твоей даты рождения спокойно и без лишнего шума 🙂\n\nВыбирай направление ниже 👇",...mainKeyboard()});return;
  }
  if(text==="/start"||text==="🏠 Главное меню"){await clearSession(user.id);await tg("sendMessage",{chat_id:chatId,text:"✨ ASTRA AURA\n\nРазберём числа твоей даты рождения спокойно и без лишнего шума 🙂\n\nВыбирай направление ниже 👇",...mainKeyboard()});return;}
- if(text==="🔢 Нумерология"){await clearSession(user.id);await event(user.id,"product_view",null);await tg("sendMessage",{chat_id:chatId,text:"🔢 НУМЕРОЛОГИЯ\n\nОтправь дату рождения ДД.ММ.ГГГГ.\nНапример: 04.05.1993\n\n",...mainKeyboard()});return;}
+ if(text==="🔮 РАЗБОР"){await clearSession(user.id);await setSession(user.id,"breakdown",1,{});await event(user.id,"product_view",null);await tg("sendMessage",{chat_id:chatId,text:"🔮 РАЗБОР\n\nОтправь дату рождения ДД.ММ.ГГГГ.\nНапример: 04.05.1993\n\nПолучишь подробный разбор по дате и прогноз на ближайшие 7 дней.",...mainKeyboard()});return;}
  if(text==="🤝 Совместимость"){await setSession(user.id,"compatibility",1,{});await event(user.id,"product_view",PRODUCTS.compatibility.key);await tg("sendMessage",{chat_id:chatId,text:"🤝 СОВМЕСТИМОСТЬ\n\nСравним две даты рождения ❤️\n\nСначала отправь первую дату ДД.ММ.ГГГГ.",...mainKeyboard()});return;}
- if(text==="🔮 Прогноз на год"){await setSession(user.id,"forecast",1,{});await event(user.id,"product_view",PRODUCTS.forecast.key);await tg("sendMessage",{chat_id:chatId,text:"🔮 ПРОГНОЗ НА ГОД\n\nОтправь дату рождения ДД.ММ.ГГГГ.\nПокажу тему года, затем можно открыть прогноз на 12 месяцев.",...mainKeyboard()});return;}
  if(text==="💎 ASTRA AURA Club"){await event(user.id,"product_view",PRODUCTS.club.key);if(await isOwner(user.id)){await ownerDeliver(chatId,PRODUCTS.club.key,PRODUCTS.club.key);return;}await invoice(chatId,PRODUCTS.club,PRODUCTS.club.key,"Ежемесячный доступ к расширенным материалам и функциям ASTRA AURA.");return;}
  if(text==="📖 Справочник"){await tg("sendMessage",{chat_id:chatId,text:"📖 СПРАВОЧНИК\n\n🔢 Числа 1-9\n🌟 11, 22, 33\n🎂 День рождения 1-31\n🧭 Число установки\n📅 Персональный год\n🗓 Персональный месяц\n♾ Кармические числа\n🤝 Совместимость по жизненному пути",...mainKeyboard()});return;}
  if(text==="🧾 Мои покупки"){
@@ -360,6 +374,8 @@ async function handle(update:any){
  }
 
  const s=await getSession(user.id),d=parseDate(text);
+ if(s?.mode==="breakdown"){if(!d){await tg("sendMessage",{chat_id:chatId,text:"Нужна дата ДД.ММ.ГГГГ 🙂",...mainKeyboard()});return;}const p=await profile(dateLabel(d));await clearSession(user.id);if(p){await rememberBirthDate(user.id,dateLabel(d));await event(user.id,"free_profile",null);await sendLong(chatId,await breakdownText(p),{reply_markup:{inline_keyboard:[[{text:"🤝 Совместимость · 299⭐",callback_data:"compatibility_start:"+dateLabel(d)}],[{text:"🏠 Главное меню",callback_data:"menu"}]]}});return;}}
+
  if(s?.mode==="compatibility"){
    if(!d){await tg("sendMessage",{chat_id:chatId,text:"Нужна дата ДД.ММ.ГГГГ 🙂",...mainKeyboard()});return;}
    if(s.step===1){await rememberBirthDate(user.id,dateLabel(d));await setSession(user.id,"compatibility",2,{date1:dateLabel(d)});await tg("sendMessage",{chat_id:chatId,text:"Принял 👍\n\nТеперь отправь вторую дату рождения.",...mainKeyboard()});return;}
@@ -386,6 +402,7 @@ Deno.serve(async(req)=>{
   if(u.callback_query){
    const c=u.callback_query;await tg("answerCallbackQuery",{callback_query_id:c.id});const data=String(c.data??"");
    if(data==="menu"){await tg("sendMessage",{chat_id:c.message.chat.id,text:"✨ ASTRA AURA\n\nВыбирай направление ниже 👇",...mainKeyboard()});return new Response("ok");}
+   if(data.startsWith("compatibility_start:")&&c.message?.chat?.id){const firstDate=data.slice("compatibility_start:".length);if(parseDate(firstDate)){await setSession(c.from.id,"compatibility",2,{date1:firstDate});await event(c.from.id,"product_view",PRODUCTS.compatibility.key);await tg("sendMessage",{chat_id:c.message.chat.id,text:"🤝 СОВМЕСТИМОСТЬ\n\nПервая дата сохранена.\n\nТеперь отправь дату рождения второго человека ДД.ММ.ГГГГ.",...mainKeyboard()});}return new Response("ok");}
    if(data.startsWith("buy:")&&c.message?.chat?.id){
     const z=data.split(":"),key=z[1],payload=z.slice(2).join(":"),p=(Object.values(PRODUCTS) as any[]).find((x:any)=>x.key===key);if(!p)return new Response("ok");
     let ok=false;
