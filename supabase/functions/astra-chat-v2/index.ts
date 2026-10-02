@@ -9,7 +9,9 @@ const PRODUCTS={
  bundle:{key:"aura_max_bundle_v1",stars:599,title:"ASTRA AURA MAX"}
 };
 const MONTH=2592000;
+const PWA_URL="https://republic-585.github.io/astra-aura/";
 const menu={keyboard:[
+ [{text:"👤 Мой кабинет",web_app:{url:PWA_URL}}],
  [{text:"🔢 Нумерология"},{text:"🤝 Совместимость"}],
  [{text:"🔮 Прогноз на год"},{text:"💎 ASTRA AURA Club"}],
  [{text:"📖 Справочник"},{text:"🧾 Мои покупки"}],
@@ -86,6 +88,52 @@ async function ownerDeliver(chatId:number,key:string,payload:string){
   if(key===PRODUCTS.club.key){
     await tg("sendMessage",{chat_id:chatId,text:"💎 ASTRA AURA Club\n\nРежим владельца: доступ открыт бесплатно. ✨",...mainKeyboard()});
   }
+}
+
+
+async function hmac(keyData:Uint8Array|string,data:string){
+ const enc=new TextEncoder();
+ const key=await crypto.subtle.importKey("raw",typeof keyData==="string"?enc.encode(keyData):keyData,{name:"HMAC",hash:"SHA-256"},false,["sign"]);
+ return new Uint8Array(await crypto.subtle.sign("HMAC",key,enc.encode(data)));
+}
+function hex(bytes:Uint8Array){return [...bytes].map(b=>b.toString(16).padStart(2,"0")).join("");}
+async function verifyTelegramWebApp(initData:string){
+ if(!initData||!BOT_TOKEN)throw new Error("telegram_auth_missing");
+ const p=new URLSearchParams(initData),hash=p.get("hash")??"",authDate=Number(p.get("auth_date")??0);
+ if(!hash||!authDate||Math.abs(Date.now()/1000-authDate)>86400)throw new Error("telegram_auth_expired");
+ const pairs=[...p.entries()].filter(([k])=>k!=="hash").sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+"="+v);
+ const secret=await hmac("WebAppData",BOT_TOKEN);
+ const calc=hex(await hmac(secret,pairs.join("\n")));
+ if(calc!==hash)throw new Error("telegram_auth_invalid");
+ const rawUser=p.get("user");if(!rawUser)throw new Error("telegram_user_missing");
+ return JSON.parse(rawUser);
+}
+async function getAstraTelegramUser(initData:string){
+ const tg=await verifyTelegramWebApp(initData),externalId=String(tg.id);
+ const displayName=[tg.first_name,tg.last_name].filter(Boolean).join(" ")||tg.username||"Telegram user";
+ const rows=await db("astra_users?channel=eq.telegram&external_id=eq."+encodeURIComponent(externalId)+"&select=*");
+ if(rows?.[0])return {user:rows[0],telegram:tg};
+ const created=await db("astra_users",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({channel:"telegram",external_id:externalId,display_name:displayName,preferred_mode:"numerology"})});
+ return {user:created?.[0],telegram:tg};
+}
+async function cabinetData(initData:string){
+ const {user,telegram}=await getAstraTelegramUser(initData);
+ if(!user)throw new Error("user_create_failed");
+ const people=await db("astra_saved_people?user_id=eq."+user.id+"&select=id,name,birth_date,relationship,created_at&order=created_at.desc&limit=50");
+ const readings=await db("astra_readings?user_id=eq."+user.id+"&select=id,reading_type,title,is_paid,created_at&order=created_at.desc&limit=50");
+ return {user,telegram,people:people??[],readings:readings??[]};
+}
+async function saveCabinetProfile(initData:string,name:string,birthDate:string){
+ const {user}=await getAstraTelegramUser(initData);
+ if(!user)throw new Error("user_create_failed");
+ const updated=await db("astra_users?id=eq."+user.id,{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify({display_name:name||user.display_name,birth_date:birthDate||null,preferred_mode:"numerology",updated_at:new Date().toISOString()})});
+ return updated?.[0]??user;
+}
+async function saveCabinetPerson(initData:string,name:string,birthDate:string,relationship:string=""){
+ const {user}=await getAstraTelegramUser(initData);
+ if(!user)throw new Error("user_create_failed");
+ const created=await db("astra_saved_people",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({user_id:user.id,name,birth_date:birthDate,relationship:relationship||null})});
+ return created?.[0]??null;
 }
 
 async function event(uid:number,key:string,product:string|null=null,metadata:any={}){try{await db("numerology_events",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({telegram_user_id:uid,event_key:key,product_key:product,metadata})});}catch(e){console.error(e);}}
@@ -166,14 +214,20 @@ async function paid(chatId:number,user:any,payload:string,payment:any){
  } else await tg("sendMessage",{chat_id:chatId,text:"🌟 ASTRA AURA Club активирован. Каждый месяц доступны расширенные материалы, новые циклы и будущие функции ✨",...mainKeyboard()});
 }
 
+async function saveReading(initData:string,readingType:string,title:string,inputData:any,resultData:any,isPaid=false){const {user}=await getAstraTelegramUser(initData);if(!user)throw new Error("user_create_failed");const created=await db("astra_readings",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({user_id:user.id,reading_type:readingType,title,input_data:inputData,result_data:resultData,is_paid:isPaid})});return created?.[0]??null;}
 async function handleWeb(body:any){
- const message=String(body?.message??"").trim();
- const candidate=message||String(body?.profile?.date??"");
- const p=await profile(candidate);
- if(p)return {ok:true,mode:"numerology",answer:freeText(p)};
- return {ok:true,mode:"numerology",answer:"🔢 ASTRA AURA\\n\\nЧтобы начать, отправь дату рождения в формате ДД.ММ.ГГГГ.\\nНапример: 04.05.1993\\n\\nГород и время пока не нужны."};
+ const initData=String(body?.telegram_init_data??"").trim(),action=String(body?.action??"");
+ if(action==="cabinet")return {ok:true,mode:"cabinet",...(initData?await cabinetData(initData):{user:null,people:[],readings:[]})};
+ if(action==="save_profile"){if(!initData)return {ok:true,mode:"cabinet"};return {ok:true,mode:"cabinet",user:await saveCabinetProfile(initData,String(body?.name??"").trim(),String(body?.birth_date??"").trim())};}
+ if(action==="save_person"){if(!initData)throw new Error("telegram_auth_required");const name=String(body?.name??"").trim(),birthDate=String(body?.birth_date??"").trim();if(!name||!parseDate(birthDate))throw new Error("invalid_person");return {ok:true,mode:"cabinet",person:await saveCabinetPerson(initData,name,birthDate)};}
+ if(action==="reading"){
+  const mode=String(body?.mode??"numerology"),d1=String(body?.date1??"").trim(),d2=String(body?.date2??"").trim(),a=await profile(d1);if(!a)throw new Error("invalid_date");
+  if(mode==="compatibility"){const b=await profile(d2);if(!b)throw new Error("invalid_second_date");const c=await compatibility(a.nums.life,b.nums.life),answer=["❤️ СОВМЕСТИМОСТЬ","",dateLabel(a.d)+" · "+labelNumber(a.nums.life),dateLabel(b.d)+" · "+labelNumber(b.nums.life),"","✨ "+clean(c.meaning),"","💪 Сильная сторона\n"+clean(c.strengths),"","⚠️ Зона внимания\n"+clean(c.challenges),"","🗣 Как договариваться\n"+clean(c.guidance),"","Это интерпретация для саморефлексии, а не прогноз отношений."].join("\n");const reading=initData?await saveReading(initData,"compatibility","Совместимость",{date1:d1,date2:d2},{answer,life1:a.nums.life,life2:b.nums.life,compatibility:c},false):null;return {ok:true,mode,answer,reading,cabinet:initData?await cabinetData(initData):null};}
+  if(mode==="forecast"){const months=[];for(let mo=1;mo<=12;mo++){const n=baseNumber(reduceNumber(a.nums.personalYear+mo)),r=await row("personal_month",String(n));months.push({month:mo,number:n,title:clean(r.title),meaning:clean(r.meaning),practical_advice:clean(r.practical_advice)})}const answer=["🔮 ПРОГНОЗ НА "+a.nums.currentYear,"","Персональный год: "+a.nums.personalYear,"",clean(a.personalYear.meaning),"","Полный прогноз раскрывает все 12 месяцев."].join("\n");const reading=initData?await saveReading(initData,"forecast","Прогноз на "+a.nums.currentYear,{date:d1},{year:a.nums.currentYear,personalYear:a.nums.personalYear,meaning:clean(a.personalYear.meaning),months},false):null;return {ok:true,mode,answer,reading,cabinet:initData?await cabinetData(initData):null};}
+  const answer=freeText(a),reading=initData?await saveReading(initData,"profile","Нумерологический профиль",{date:d1},{numbers:a.nums,answer},false):null;return {ok:true,mode:"numerology",answer,reading,cabinet:initData?await cabinetData(initData):null};
+ }
+ const message=String(body?.message??"").trim(),candidate=message||String(body?.profile?.date??"");const p=await profile(candidate);if(p)return {ok:true,mode:"numerology",answer:freeText(p)};return {ok:true,mode:"numerology",answer:"🔢 ASTRA AURA\n\nЧтобы начать, отправь дату рождения в формате ДД.ММ.ГГГГ.\nНапример: 04.05.1993\n\nГород и время пока не нужны."};
 }
-
 async function handle(update:any){
  if(update.pre_checkout_query){const q=update.pre_checkout_query,payload=String(q.invoice_payload??""),p=Object.values(PRODUCTS).find((x:any)=>payload===x.key||payload.startsWith(x.key+":")) as any,ok=Boolean(p)&&q.currency==="XTR"&&Number(q.total_amount)===p.stars;await tg("answerPreCheckoutQuery",{pre_checkout_query_id:q.id,ok,...(ok?{}:{error_message:"Не удалось проверить заказ. Попробуй ещё раз через минуту."})});return;}
  const m=update.message;if(!m)return;const chatId=m.chat?.id,user=m.from;if(!chatId||!user)return;
@@ -227,7 +281,7 @@ Deno.serve(async(req)=>{
  try{
   const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
   if(req.method==="OPTIONS")return new Response("ok",{status:204,headers:cors});
-  if(req.method!=="POST")return new Response("ASTRA AURA v51",{status:200,headers:cors});
+  if(req.method!=="POST")return new Response("ASTRA AURA v58",{status:200,headers:cors});
   if(!BOT_TOKEN||!SUPABASE_URL||!SUPABASE_SERVICE_ROLE_KEY)return new Response(JSON.stringify({error:"configuration error"}),{status:500,headers:{...cors,"Content-Type":"application/json"}});
   const u=await req.json();
   if(u?.channel==="web"){const out=await handleWeb(u);return new Response(JSON.stringify(out),{status:200,headers:{...cors,"Content-Type":"application/json"}});}
