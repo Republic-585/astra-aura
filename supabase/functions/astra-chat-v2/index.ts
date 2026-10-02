@@ -401,7 +401,7 @@ async function handleUpdate(update: any) {
       text: freeText(profile),
       reply_markup: {
         inline_keyboard: [[
-          { text: "💎 Полный профиль · " + PRODUCT_STARS + "⭐", callback_data: "buy_profile:" + String(d.day).padStart(2, "0") + "." + String(d.month).padStart(2, "0") + "." + d.year }
+          { text: "💎 Полный профиль · " + PRODUCT_STARS + "⭐", callback_data: "buy_profile:" + String(profile.d.day).padStart(2, "0") + "." + String(profile.d.month).padStart(2, "0") + "." + profile.d.year }
         ]]
       }
     });
