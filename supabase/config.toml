@@ -1,0 +1,4 @@
+project_id = "dfvztoazthliaobqnndv"
+
+[functions.astra-chat-v2]
+verify_jwt = false
