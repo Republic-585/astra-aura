@@ -85,4 +85,4 @@ $("#date1").addEventListener("input",e=>{if(e.target.value)setProfile({...getPro
 tgApp?.BackButton?.onClick(()=>{window.scrollTo({top:0,behavior:"smooth"});tgApp.BackButton.hide()});
 const p=getProfile();if(p.date){$("#date1").value=p.date;$("#birthDate").value=p.date}
 renderCabinet();sync();
-if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).then(()=>navigator.serviceWorker.register("./sw.js?v=12")).catch(()=>{}));
+if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.getRegistrations().then(rs=>Promise.all(rs.map(r=>r.unregister()))).then(()=>navigator.serviceWorker.register("./sw.js?v=14")).catch(()=>{}));
