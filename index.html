@@ -7,88 +7,119 @@
 <meta name="description" content="Нумерология.">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <link rel="manifest" href="./manifest.json">
-<link rel="stylesheet" href="./styles.css?v=12">
+<link rel="stylesheet" href="./styles.css?v=13">
 <title>ASTRA AURA</title>
 </head>
 <body>
 <div class="app-shell">
 <header class="topbar">
-<button class="brand" id="homeButton" aria-label="Главная"><b>ASTRA AURA</b><small>NUMEROLOGY</small></button>
+  <button class="brand" id="homeButton" aria-label="Главная">
+    <span class="brand-mark">✦</span>
+    <span class="brand-copy"><b>ASTRA AURA</b><small>NUMEROLOGY</small></span>
+  </button>
+  <span class="top-status">●</span>
 </header>
 
 <main>
 <section class="hero" id="home">
-<div class="eyebrow">ASTRA AURA</div>
-<h1>Нумерология.<br><em>Твой разбор.</em></h1>
-<p>Одна дата рождения. Основные числа, смысл и текущий ритм.</p>
-<button class="primary-button" id="startButton">Начать разбор <span>→</span></button>
+  <div class="hero-orbit" aria-hidden="true"><span></span><i></i></div>
+  <div class="eyebrow">PERSONAL NUMEROLOGY</div>
+  <h1>Твоя дата.<br><em>Твой код.</em></h1>
+  <p>Разбери основные числа, текущий цикл и направления, на которые стоит обратить внимание.</p>
+  <button class="primary-button hero-button" id="startButton">Начать разбор <span>↗</span></button>
+  <div class="hero-note"><span>01</span><b>дата рождения</b><span>→</span><b>личный разбор</b></div>
 </section>
 
-<section class="workspace" id="breakdownPanel">
-<div class="section-head"><div><div class="eyebrow">РАЗБОР</div><h2>Твоя дата</h2></div><span class="live">бесплатно</span></div>
-<p class="mode-hint">Сначала получишь короткий разбор. Если захочешь глубже, здесь же увидишь точную стоимость и содержание каждого продукта.</p>
-<form id="readingForm" class="reading-form">
-<label class="field"><span>Дата рождения</span><input id="date1" type="date" required></label>
-<button class="primary-button full" id="readingButton" type="submit">Получить бесплатный разбор <span>→</span></button>
-</form>
-<div class="messages" id="messages"></div>
+<section class="workspace reading-section" id="breakdownPanel">
+  <div class="section-kicker"><span class="eyebrow">01 · РАЗБОР</span><span class="pill">БЕСПЛАТНО</span></div>
+  <div class="section-title"><h2>Начни с даты</h2><p>Первый слой разбора получишь сразу. Дальше сам решишь, нужен ли полный формат.</p></div>
+  <form id="readingForm" class="reading-form">
+    <label class="date-field">
+      <span>Дата рождения</span>
+      <input id="date1" type="date" required>
+    </label>
+    <button class="primary-button full" id="readingButton" type="submit">Получить разбор <span>↗</span></button>
+  </form>
+  <div class="messages" id="messages"></div>
 </section>
 
-<section class="workspace" id="offersPanel" hidden>
-<div class="section-head"><div><div class="eyebrow">ПРОДУКТЫ</div><h2>Что открыть дальше</h2></div></div>
-<div class="offer-list">
-<article class="offer-card">
-<div><span class="offer-tag">01</span><h3>Полный профиль</h3><p>Характер, сильные стороны, отношения, деньги, реализация, текущий цикл и практический вектор.</p></div>
-<div class="offer-bottom"><b>199⭐</b><button class="secondary-button buy-button" data-product="profile">Открыть профиль</button></div>
-</article>
-<article class="offer-card">
-<div><span class="offer-tag">02</span><h3>Совместимость</h3><p>Разбор пары: динамика отношений, коммуникация, совместные действия, цели, деньги и зоны внимания.</p></div>
-<label class="field compact"><span>Дата второго человека</span><input id="date2" type="date"></label>
-<div class="offer-bottom"><b>299⭐</b><button class="secondary-button buy-button" data-product="compatibility">Разобрать пару</button></div>
-</article>
-<article class="offer-card">
-<div><span class="offer-tag">03</span><h3>Прогноз на 12 месяцев</h3><p>Тема года и отдельный разбор каждого месяца с практическими ориентирами.</p></div>
-<div class="offer-bottom"><b>249⭐</b><button class="secondary-button buy-button" data-product="forecast">Открыть прогноз</button></div>
-</article>
-</div>
-<p class="privacy-note">Оплата проходит в Telegram Stars. После успешной оплаты полный результат отправляется в Telegram.</p>
+<section class="workspace offers-section" id="offersPanel" hidden>
+  <div class="section-kicker"><span class="eyebrow">02 · ДАЛЬШЕ</span><span class="pill">ОПЛАТА В TELEGRAM</span></div>
+  <div class="section-title"><h2>Открыть глубже</h2><p>Три понятных формата. Цена и содержание видны до оплаты.</p></div>
+  <div class="offer-list">
+    <article class="offer-card featured">
+      <div class="offer-top"><span class="offer-index">01</span><span class="offer-price">199 ⭐</span></div>
+      <div class="offer-icon">✦</div>
+      <h3>Полный профиль</h3>
+      <p>Характер, сильные стороны, отношения, деньги, реализация, текущий цикл и практический вектор.</p>
+      <div class="offer-bottom"><span>Полный разбор</span><button class="secondary-button buy-button" data-product="profile">Открыть</button></div>
+    </article>
+    <article class="offer-card">
+      <div class="offer-top"><span class="offer-index">02</span><span class="offer-price">299 ⭐</span></div>
+      <div class="offer-icon">∞</div>
+      <h3>Совместимость</h3>
+      <p>Динамика пары, коммуникация, совместные цели, деньги, сильные стороны и зоны внимания.</p>
+      <label class="date-field compact"><span>Дата второго человека</span><input id="date2" type="date"></label>
+      <div class="offer-bottom"><span>Разбор пары</span><button class="secondary-button buy-button" data-product="compatibility">Открыть</button></div>
+    </article>
+    <article class="offer-card">
+      <div class="offer-top"><span class="offer-index">03</span><span class="offer-price">249 ⭐</span></div>
+      <div class="offer-icon">◒</div>
+      <h3>Прогноз на 12 месяцев</h3>
+      <p>Тема года и отдельный разбор каждого месяца с практическими ориентирами.</p>
+      <div class="offer-bottom"><span>12 месяцев</span><button class="secondary-button buy-button" data-product="forecast">Открыть</button></div>
+    </article>
+  </div>
+  <div class="payment-note"><span>✓</span><p>После успешной оплаты полный результат автоматически отправится в Telegram.</p></div>
 </section>
 
-<section class="workspace" id="cabinetPanel">
-<div class="section-head"><div><div class="eyebrow">КАБИНЕТ</div><h2>Мой профиль</h2></div><span class="sync-state" id="syncState">локально</span></div>
-<div class="profile-card"><div><b id="cabinetName">Мой профиль</b><small id="cabinetDate">Дата рождения не задана</small></div><span>✦</span></div>
-<div id="cabinetEmpty" class="empty-state"><p>Сохрани имя и дату рождения. Здесь будут твои числа, связи и история.</p><button class="secondary-button" id="createProfileButton">Создать профиль</button></div>
-<div id="cabinetData" hidden>
-<div class="number-grid">
-<article><small>Жизненный путь</small><strong id="lifeNumber">—</strong></article>
-<article><small>Установка</small><strong id="attitudeNumber">—</strong></article>
-<article><small>Персональный год</small><strong id="yearNumber">—</strong><small id="cycleYear">—</small></article>
-<article><small>Персональный месяц</small><strong id="monthNumber">—</strong><small id="cycleMonth">—</small></article>
-</div>
-<div class="subsection"><div class="subsection-head"><b>Сохранённые связи</b><span id="peopleCount">0</span></div><div id="peopleList" class="list"></div>
-<form id="savePersonForm" class="inline-form"><input id="personName" placeholder="Имя" maxlength="60"><input id="personDate" type="date"><button aria-label="Сохранить связь">+</button></form></div>
-<div class="subsection"><div class="subsection-head"><b>История</b><span id="readingCount">0</span></div><div id="readingList" class="list"></div></div>
-</div>
+<section class="workspace cabinet-section" id="cabinetPanel">
+  <div class="section-kicker"><span class="eyebrow">03 · КАБИНЕТ</span><span class="sync-state" id="syncState">локально</span></div>
+  <div class="section-title"><h2>Твой профиль</h2><p>Все основные числа и сохранённые связи в одном месте.</p></div>
+  <div class="profile-card">
+    <div class="profile-avatar">✦</div>
+    <div class="profile-main"><b id="cabinetName">Мой профиль</b><small id="cabinetDate">Дата рождения не задана</small></div>
+    <span class="profile-arrow">›</span>
+  </div>
+  <div id="cabinetEmpty" class="empty-state"><p>Добавь имя и дату рождения, чтобы сохранить свой профиль.</p><button class="secondary-button" id="createProfileButton">Настроить профиль</button></div>
+  <div id="cabinetData" hidden>
+    <div class="number-grid">
+      <article><small>Жизненный путь</small><strong id="lifeNumber">—</strong><span>основа</span></article>
+      <article><small>Установка</small><strong id="attitudeNumber">—</strong><span>вектор</span></article>
+      <article><small>Персональный год</small><strong id="yearNumber">—</strong><span id="cycleYear">—</span></article>
+      <article><small>Персональный месяц</small><strong id="monthNumber">—</strong><span id="cycleMonth">—</span></article>
+    </div>
+    <div class="subsection">
+      <div class="subsection-head"><b>Сохранённые связи</b><span id="peopleCount">0</span></div>
+      <div id="peopleList" class="list"></div>
+      <form id="savePersonForm" class="inline-form"><input id="personName" placeholder="Имя" maxlength="60"><input id="personDate" type="date"><button aria-label="Сохранить связь">+</button></form>
+    </div>
+    <div class="subsection">
+      <div class="subsection-head"><b>История</b><span id="readingCount">0</span></div>
+      <div id="readingList" class="list"></div>
+    </div>
+  </div>
 </section>
 
-<section class="workspace" id="profilePanel">
-<div class="section-head"><div><div class="eyebrow">ДАННЫЕ</div><h2>Мой профиль</h2></div></div>
-<form id="birthForm" class="reading-form">
-<label class="field"><span>Имя</span><input id="userName" maxlength="60" placeholder="Как к тебе обращаться?"></label>
-<label class="field"><span>Дата рождения</span><input id="birthDate" type="date" required></label>
-<button class="primary-button full" type="submit">Сохранить профиль <span>→</span></button>
-</form>
-<p class="privacy-note" id="syncStatus">В Telegram данные синхронизируются. В обычном браузере работает локальный режим.</p>
+<section class="workspace profile-section" id="profilePanel">
+  <div class="section-kicker"><span class="eyebrow">ПРОФИЛЬ</span></div>
+  <div class="section-title"><h2>Личные данные</h2><p>Они нужны, чтобы сохранять твои результаты и возвращаться к ним.</p></div>
+  <form id="birthForm" class="reading-form">
+    <label class="date-field"><span>Имя</span><input id="userName" maxlength="60" placeholder="Как к тебе обращаться?"></label>
+    <label class="date-field"><span>Дата рождения</span><input id="birthDate" type="date" required></label>
+    <button class="primary-button full" type="submit">Сохранить профиль <span>↗</span></button>
+  </form>
+  <p class="privacy-note" id="syncStatus">В Telegram данные синхронизируются. В обычном браузере работает локальный режим.</p>
 </section>
 </main>
 
-<nav class="bottom-nav">
-<button class="nav-item active" data-scroll="home"><span>✦</span><small>Главная</small></button>
-<button class="nav-item" data-scroll="breakdownPanel"><span>◒</span><small>Разбор</small></button>
-<button class="nav-item" data-scroll="cabinetPanel"><span>◌</span><small>Кабинет</small></button>
+<nav class="bottom-nav" aria-label="Навигация">
+  <button class="nav-item active" data-scroll="home"><span>⌂</span><small>Главная</small></button>
+  <button class="nav-item" data-scroll="breakdownPanel"><span>✦</span><small>Разбор</small></button>
+  <button class="nav-item" data-scroll="cabinetPanel"><span>◌</span><small>Кабинет</small></button>
 </nav>
 <div id="toast" role="status"></div>
 </div>
-<script src="./app.js?v=12"></script>
+<script src="./app.js?v=13"></script>
 </body>
 </html>
